@@ -15,6 +15,15 @@ md5 = "0.7.0"
 zip = "0.5.8"
 clap = "2.33.3"
 
+[dependencies.winapi]
+version = "0.3.9"
+features = [
+    "winnt",
+    "jobapi2",
+    "minwindef",
+    "processthreadsapi"
+]
+
 [profile.release]
 lto = true
 codegen-units = 1

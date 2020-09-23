@@ -71,6 +71,10 @@ async fn main() -> Result<()> {
     let keeppip = matches.is_present("keep-pip");
     let packages: Vec<&str> = matches.values_of("PACKAGES").unwrap_or_default().collect();
 
+    unsafe {
+        setup_job()?;
+    }
+
     std::fs::create_dir_all(&workdir)?;
 
     if skipdownload {
@@ -447,4 +451,36 @@ async fn get_python_download_info(ver: &str, is32: bool) -> Result<(String, Stri
         }
     }
     Err("找不到信息".into())
+}
+
+// https://github.com/rust-lang/cargo/blob/master/src/cargo/util/job.rs
+// 简单一抄，凑合能用
+unsafe fn setup_job() -> Result<()> {
+    use winapi::shared::minwindef::*;
+    use winapi::um::jobapi2::*;
+    use winapi::um::processthreadsapi::*;
+    use winapi::um::winnt::*;
+
+    let job = CreateJobObjectW(std::ptr::null_mut(), std::ptr::null());
+    if job.is_null() {
+        return Err("CreateJobObject failed".into());
+    }
+    let mut info: JOBOBJECT_EXTENDED_LIMIT_INFORMATION;
+    info = std::mem::zeroed();
+    info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+    let r = SetInformationJobObject(
+        job,
+        JobObjectExtendedLimitInformation,
+        &mut info as *mut _ as LPVOID,
+        std::mem::size_of_val(&info) as DWORD,
+    );
+    if r == 0 {
+        return Err("SetInformationJobObject failed".into());
+    }
+    let me = GetCurrentProcess();
+    let r = AssignProcessToJobObject(job, me);
+    if r == 0 {
+        return Err("AssignProcessToJobObject failed".into());
+    }
+    Ok(())
 }
