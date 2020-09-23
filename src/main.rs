@@ -8,8 +8,8 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    let matches = clap::App::new("pyembed")
-        .version("0.0.1")
+    let matches = clap::App::new("pyembed_downloader")
+        .version("0.0.2")
         .arg(
             clap::Arg::with_name("32")
                 .long("32")
@@ -57,8 +57,11 @@ async fn main() -> Result<()> {
         .get_matches();
 
     let currentdir = std::env::current_dir()?;
-    let workdir =
-        std::path::Path::new(matches.value_of_os("dir").unwrap_or(currentdir.as_os_str()));
+    let mut workdir =
+        std::path::PathBuf::from(matches.value_of_os("dir").unwrap_or(currentdir.as_os_str()));
+    if workdir.is_relative() {
+        workdir = currentdir.join(workdir);
+    }
     let targetdir = workdir.join("target");
     let is32 = matches.is_present("32");
     let skipdownload = matches.is_present("skip-download");
@@ -68,8 +71,8 @@ async fn main() -> Result<()> {
     let keeppip = matches.is_present("keep-pip");
     let packages: Vec<&str> = matches.values_of("PACKAGES").unwrap_or_default().collect();
 
-    std::fs::create_dir_all(workdir)?;
-    
+    std::fs::create_dir_all(&workdir)?;
+
     if skipdownload {
         let v = get_local_python_version(&targetdir)?;
         println!("本地版本：\t{}.{}.{}", v.0, v.1, v.2);
@@ -144,7 +147,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-fn is_empty_dir(dir: &std::path::Path) ->Result<bool> {
+fn is_empty_dir(dir: &std::path::Path) -> Result<bool> {
     if !dir.exists() {
         return Ok(true);
     }
