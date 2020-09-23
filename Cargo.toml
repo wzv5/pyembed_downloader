@@ -1,0 +1,20 @@
+[package]
+name = "pyembed_downloader"
+version = "0.1.0"
+authors = ["wzv5 <wzv5@msn.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+reqwest = "0.10.8"
+regex = "1.3.9"
+tokio = { version = "0.2.22", features = ["macros"] }
+bytes = "0.5.6"
+md5 = "0.7.0"
+zip = "0.5.8"
+clap = "2.33.3"
+
+[profile.release]
+lto = true
+codegen-units = 1
