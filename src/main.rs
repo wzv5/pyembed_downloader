@@ -9,7 +9,7 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 #[tokio::main]
 async fn main() -> Result<()> {
     let matches = clap::App::new("pyembed_downloader")
-        .version("0.0.2")
+        .version("0.0.3")
         .arg(
             clap::Arg::with_name("32")
                 .long("32")
@@ -167,16 +167,16 @@ fn compile(dir: &std::path::Path) -> Result<()> {
 }
 
 fn _py_compile(dir: &std::path::Path) -> Result<()> {
-    let script = format!(
-        r#"
+    let script = r#"
 # encoding: utf-8
 
-ROOT = r"{}"
-FOUND_PYD = False
-
+import sys
 import os
 import py_compile
 import shutil
+
+ROOT = sys.argv[1]
+FOUND_PYD = False
 
 def compile(dir):
     sitedir = os.path.join(ROOT, "Lib", "site-packages")
@@ -185,38 +185,37 @@ def compile(dir):
         shortname = os.path.join(dir, i)
         if os.path.isdir(fullname):
             if i.lower() == "__pycache__":
-                print(f"删除：{{shortname}}")
+                print(f"删除：{shortname}")
                 shutil.rmtree(fullname)
             elif i.lower().endswith(".dist-info"):
-                print(f"跳过：{{shortname}}")
+                print(f"跳过：{shortname}")
             else:
                 compile(shortname)
         elif os.path.isfile(fullname):
             if i.lower().endswith(".py"):
-                print(f"编译：{{shortname}}")
+                print(f"编译：{shortname}")
                 try:
                     py_compile.compile(fullname, fullname + "c", doraise=True)
                 except:
-                    print(f"编译失败，跳过：{{shortname}}")
+                    print(f"编译失败，跳过：{shortname}")
                 else:
                     os.remove(fullname)
             elif i.lower().endswith(".pyd"):
                 global FOUND_PYD
                 FOUND_PYD = True
         else:
-            print(f"未知文件类型：{{shortname}}")
+            print(f"未知文件类型：{shortname}")
 
 compile(".")
 if not FOUND_PYD:
     print("==========")
     print("没有发现 .pyd 文件，site-packages 目录也许可以被打包为 zip")
-"#,
-        dir.to_str().unwrap()
-    );
+"#;
 
     use std::io::Write;
     let mut cmd = new_python_command(dir);
     cmd.arg("-");
+    cmd.arg(dir);
     cmd.env("PYTHONIOENCODING", "utf-8");
     cmd.stdin(std::process::Stdio::piped());
     let mut process = cmd.spawn()?;
