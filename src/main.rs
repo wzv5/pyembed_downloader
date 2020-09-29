@@ -62,7 +62,7 @@ async fn main() -> Result<()> {
     if workdir.is_relative() {
         workdir = currentdir.join(workdir);
     }
-    let targetdir = workdir.join("target");
+    let targetdir = workdir.join("pyembed_runtime");
     let is32 = matches.is_present("32");
     let skipdownload = matches.is_present("skip-download");
     let pipmirror = matches.value_of("pip-mirror");
@@ -70,6 +70,13 @@ async fn main() -> Result<()> {
     let keepdistinfo = matches.is_present("keep-dist-info");
     let keeppip = matches.is_present("keep-pip");
     let packages: Vec<&str> = matches.values_of("PACKAGES").unwrap_or_default().collect();
+
+    if packages.len() == 0 {
+        use winapi::um::winuser;
+        if MessageBoxW("没有指定要安装的依赖包，确定要继续吗？", winuser::MB_ICONQUESTION | winuser::MB_OKCANCEL) != winuser::IDOK as u32 {
+            return Err("用户取消".into());
+        }
+    }
 
     unsafe {
         setup_job()?;
@@ -161,7 +168,7 @@ async fn main() -> Result<()> {
     println!("清理 ...");
     cleanup(&targetdir, keeppip, keepscripts, keepdistinfo)?;
 
-    println!("完成！");
+    MessageBoxW("完成！", winapi::um::winuser::MB_ICONINFORMATION);
     Ok(())
 }
 
@@ -496,4 +503,21 @@ unsafe fn setup_job() -> Result<()> {
         return Err("AssignProcessToJobObject failed".into());
     }
     Ok(())
+}
+
+#[allow(non_snake_case)]
+fn MessageBoxW(text: &str, typ: u32) -> u32 {
+    unsafe {
+        let hwnd = winapi::um::wincon::GetConsoleWindow();
+        let text = str_to_wide(text);
+        let caption = str_to_wide("pyembed_downloader");
+        winapi::um::winuser::MessageBoxW(hwnd, text.as_ptr(), caption.as_ptr(), typ) as _
+    }
+}
+
+fn str_to_wide(s: &str) -> Vec<u16> {
+    use std::ffi::OsStr;
+    use std::iter::once;
+    use std::os::windows::ffi::OsStrExt;
+    OsStr::new(s).encode_wide().chain(once(0)).collect()
 }

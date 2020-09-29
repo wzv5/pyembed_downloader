@@ -21,7 +21,9 @@ features = [
     "winnt",
     "jobapi2",
     "minwindef",
-    "processthreadsapi"
+    "processthreadsapi",
+    "winuser",
+    "wincon"
 ]
 
 [profile.release]
