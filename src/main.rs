@@ -92,26 +92,40 @@ async fn main() -> Result<()> {
         println!("下载链接：\t{}", info.0);
         println!("文件哈希：\t{}", info.1);
 
-        println!("正在下载 ...");
-        let pyembeddata = download(&info.0).await?;
-        //let pyembeddata = std::fs::read(r"D:\下载\python-3.8.5-embed-amd64.zip")?;
-
-        println!("校验文件完整性 ...");
-        let hash = format!("{:x}", md5::compute(&pyembeddata));
-        if !hash.eq_ignore_ascii_case(&info.1) {
-            println!("文件哈希不匹配");
-            println!("预期：\t{}", info.1);
-            println!("实际：\t{}", hash);
-            return Err("文件哈希不匹配".into());
-        }
-
         let mut arch = "amd64";
         if is32 {
             arch = "x86";
         }
         let filename = format!("python-{}-embed-{}.zip", v, arch);
         let mainpath = workdir.join(filename);
-        std::fs::write(&mainpath, &pyembeddata)?;
+
+        let mut mainfileexists = false;
+        if mainpath.exists() {
+            if let Ok(pyembeddata) = std::fs::read(&mainpath) {
+                let hash = format!("{:x}", md5::compute(&pyembeddata));
+                if hash.eq_ignore_ascii_case(&info.1) {
+                    println!("文件已存在，跳过下载");
+                    mainfileexists = true;
+                }
+            }
+        }
+
+        if !mainfileexists {
+            println!("正在下载 ...");
+            let pyembeddata = download(&info.0).await?;
+            //let pyembeddata = std::fs::read(r"D:\下载\python-3.8.5-embed-amd64.zip")?;
+
+            println!("校验文件完整性 ...");
+            let hash = format!("{:x}", md5::compute(&pyembeddata));
+            if !hash.eq_ignore_ascii_case(&info.1) {
+                println!("文件哈希不匹配");
+                println!("预期：\t{}", info.1);
+                println!("实际：\t{}", hash);
+                return Err("文件哈希不匹配".into());
+            }
+
+            std::fs::write(&mainpath, &pyembeddata)?;
+        }
 
         println!("解压文件 ...");
         extract(&mainpath, &targetdir)?;
