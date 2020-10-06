@@ -9,7 +9,15 @@ type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 #[tokio::main]
 async fn main() -> Result<()> {
     let matches = clap::App::new("pyembed_downloader")
-        .version("0.0.3")
+        .version("0.0.4")
+        .arg(
+            clap::Arg::with_name("pyver")
+                .long("py-ver")
+                .takes_value(true)
+                .value_name("ver")
+                .default_value("latest")
+                .help("下载指定版本的 Python，如 3.8.6"),
+        )
         .arg(
             clap::Arg::with_name("32")
                 .long("32")
@@ -63,6 +71,7 @@ async fn main() -> Result<()> {
         workdir = currentdir.join(workdir);
     }
     let targetdir = workdir.join("pyembed_runtime");
+    let pyver = matches.value_of("pyver").unwrap();
     let is32 = matches.is_present("32");
     let skipdownload = matches.is_present("skip-download");
     let pipmirror = matches.value_of("pip-mirror");
@@ -92,9 +101,18 @@ async fn main() -> Result<()> {
             return Err(format!("{} 目录非空", targetdir.display()).into());
         }
 
-        let v = get_latest_python_version().await?;
-        println!("最新版本：\t{}", v);
-
+        let v;
+        if pyver == "latest" {
+            v = get_latest_python_version().await?;
+            println!("最新版本：\t{}", v);
+        } else {
+            v = pyver.to_owned();
+            if regex_find(r"^\d+\.\d+\.\d+$", &v).is_none() {
+                return Err("版本号格式错误".into());
+            }
+            println!("指定版本：\t{}", v);
+        }
+        
         let info = get_python_download_info(&v, is32).await?;
         println!("下载链接：\t{}", info.0);
         println!("文件哈希：\t{}", info.1);
