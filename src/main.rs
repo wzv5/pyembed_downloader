@@ -4,12 +4,14 @@ extern crate md5;
 extern crate regex;
 extern crate reqwest;
 
+mod native;
+
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let matches = clap::App::new("pyembed_downloader")
-        .version("0.0.4")
+        .version("0.0.5")
         .arg(
             clap::Arg::with_name("pyver")
                 .long("py-ver")
@@ -82,16 +84,26 @@ async fn main() -> Result<()> {
 
     if packages.len() == 0 {
         use winapi::um::winuser;
-        if MessageBoxW("没有指定要安装的依赖包，确定要继续吗？", winuser::MB_ICONQUESTION | winuser::MB_OKCANCEL) != winuser::IDOK as u32 {
+        if native::MessageBoxW(
+            "没有指定要安装的依赖包，确定要继续吗？",
+            winuser::MB_ICONQUESTION | winuser::MB_OKCANCEL,
+        ) != winuser::IDOK as u32
+        {
             return Err("用户取消".into());
         }
     }
 
-    unsafe {
-        setup_job()?;
-    }
+    native::setup_job()?;
 
     std::fs::create_dir_all(&workdir)?;
+
+    let simple_progress = |total: i64, read: i64| {
+        if total == -1 {
+            print!("\r{}", read);
+        } else {
+            print!("\r{}%", 100 * read / total);
+        }
+    };
 
     if skipdownload {
         let v = get_local_python_version(&targetdir)?;
@@ -112,7 +124,7 @@ async fn main() -> Result<()> {
             }
             println!("指定版本：\t{}", v);
         }
-        
+
         let info = get_python_download_info(&v, is32).await?;
         println!("下载链接：\t{}", info.0);
         println!("文件哈希：\t{}", info.1);
@@ -137,9 +149,9 @@ async fn main() -> Result<()> {
 
         if !mainfileexists {
             println!("正在下载 ...");
-            let pyembeddata = download(&info.0).await?;
+            let pyembeddata = download_progress(&info.0, &simple_progress)?;
             //let pyembeddata = std::fs::read(r"D:\下载\python-3.8.5-embed-amd64.zip")?;
-
+            print!("\r");
             println!("校验文件完整性 ...");
             let hash = format!("{:x}", md5::compute(&pyembeddata));
             if !hash.eq_ignore_ascii_case(&info.1) {
@@ -159,7 +171,8 @@ async fn main() -> Result<()> {
     let pippath = workdir.join("get-pip.py");
     if !skipdownload || !pippath.exists() {
         println!("正在下载 pip ...");
-        let pipdata = download("https://bootstrap.pypa.io/get-pip.py").await?;
+        let pipdata = download_progress("https://bootstrap.pypa.io/get-pip.py", &simple_progress)?;
+        print!("\r");
         //let pipdata = std::fs::read(r"D:\下载\get-pip.py")?;
         std::fs::write(&pippath, &pipdata)?;
     }
@@ -186,7 +199,7 @@ async fn main() -> Result<()> {
     println!("清理 ...");
     cleanup(&targetdir, keeppip, keepscripts, keepdistinfo)?;
 
-    MessageBoxW("完成！", winapi::um::winuser::MB_ICONINFORMATION);
+    native::MessageBoxW("完成！", winapi::um::winuser::MB_ICONINFORMATION);
     Ok(())
 }
 
@@ -442,10 +455,6 @@ fn extract(source: &std::path::Path, target: &std::path::Path) -> Result<()> {
     Ok(())
 }
 
-async fn download(url: impl reqwest::IntoUrl) -> reqwest::Result<bytes::Bytes> {
-    Ok(reqwest::get(url).await?.bytes().await?)
-}
-
 async fn get(url: impl reqwest::IntoUrl) -> reqwest::Result<String> {
     Ok(reqwest::get(url).await?.text().await?)
 }
@@ -491,51 +500,34 @@ async fn get_python_download_info(ver: &str, is32: bool) -> Result<(String, Stri
     Err("找不到信息".into())
 }
 
-// https://github.com/rust-lang/cargo/blob/master/src/cargo/util/job.rs
-// 简单一抄，凑合能用
-unsafe fn setup_job() -> Result<()> {
-    use winapi::shared::minwindef::*;
-    use winapi::um::jobapi2::*;
-    use winapi::um::processthreadsapi::*;
-    use winapi::um::winnt::*;
+fn download_progress(
+    url: impl reqwest::IntoUrl,
+    callback: &dyn Fn(i64, i64),
+) -> Result<bytes::Bytes> {
+    use bytes::BufMut;
 
-    let job = CreateJobObjectW(std::ptr::null_mut(), std::ptr::null());
-    if job.is_null() {
-        return Err("CreateJobObject failed".into());
+    let mut res = reqwest::blocking::get(url)?;
+    if !res.status().is_success() {
+        let code: u16 = res.status().into();
+        return Err(format!("http request failed with status code {}", code).into());
     }
-    let mut info: JOBOBJECT_EXTENDED_LIMIT_INFORMATION;
-    info = std::mem::zeroed();
-    info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
-    let r = SetInformationJobObject(
-        job,
-        JobObjectExtendedLimitInformation,
-        &mut info as *mut _ as LPVOID,
-        std::mem::size_of_val(&info) as DWORD,
-    );
-    if r == 0 {
-        return Err("SetInformationJobObject failed".into());
+    let mut data = bytes::BytesMut::new();
+    let buf_size = 0x10000;
+    let mut buf = vec![0u8; buf_size];
+    let mut total_size: i64 = -1;
+    let mut read_size: i64 = 0;
+    if let Some(len) = res.headers().get(reqwest::header::CONTENT_LENGTH) {
+        total_size = len.to_str()?.parse::<i64>()?;
     }
-    let me = GetCurrentProcess();
-    let r = AssignProcessToJobObject(job, me);
-    if r == 0 {
-        return Err("AssignProcessToJobObject failed".into());
+    callback(total_size, read_size);
+    loop {
+        let bytes_read = std::io::Read::read(&mut res, &mut buf)?;
+        if bytes_read == 0 {
+            break;
+        }
+        data.put(&buf[0..bytes_read]);
+        read_size += bytes_read as i64;
+        callback(total_size, read_size);
     }
-    Ok(())
-}
-
-#[allow(non_snake_case)]
-fn MessageBoxW(text: &str, typ: u32) -> u32 {
-    unsafe {
-        let hwnd = winapi::um::wincon::GetConsoleWindow();
-        let text = str_to_wide(text);
-        let caption = str_to_wide("pyembed_downloader");
-        winapi::um::winuser::MessageBoxW(hwnd, text.as_ptr(), caption.as_ptr(), typ) as _
-    }
-}
-
-fn str_to_wide(s: &str) -> Vec<u16> {
-    use std::ffi::OsStr;
-    use std::iter::once;
-    use std::os::windows::ffi::OsStrExt;
-    OsStr::new(s).encode_wide().chain(once(0)).collect()
+    Ok(data.into())
 }
