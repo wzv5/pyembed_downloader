@@ -4,12 +4,31 @@ extern crate md5;
 extern crate regex;
 extern crate reqwest;
 
+#[macro_use]
+extern crate log;
+
 mod native;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 
+struct ConsoleLogger;
+impl log::Log for ConsoleLogger {
+    fn enabled(&self, _: &log::Metadata) -> bool {
+        true
+    }
+
+    fn log(&self, record: &log::Record) {
+        println!("{}", record.args());
+    }
+
+    fn flush(&self) {}
+}
+static MYLOGGER: ConsoleLogger = ConsoleLogger;
+
 #[tokio::main]
 async fn main() -> Result<()> {
+    log::set_logger(&MYLOGGER).unwrap();
+    log::set_max_level(log::LevelFilter::Info);
     let matches = clap::App::new("pyembed_downloader")
         .version("0.0.5")
         .arg(
@@ -103,11 +122,13 @@ async fn main() -> Result<()> {
         } else {
             print!("\r{}%", 100 * read / total);
         }
+        use std::io::Write;
+        std::io::stdout().flush().unwrap();
     };
 
     if skipdownload {
         let v = get_local_python_version(&targetdir)?;
-        println!("本地版本：\t{}.{}.{}", v.0, v.1, v.2);
+        info!("本地版本：\t{}.{}.{}", v.0, v.1, v.2);
     } else {
         if !is_empty_dir(&targetdir)? {
             return Err(format!("{} 目录非空", targetdir.display()).into());
@@ -116,18 +137,18 @@ async fn main() -> Result<()> {
         let v;
         if pyver == "latest" {
             v = get_latest_python_version().await?;
-            println!("最新版本：\t{}", v);
+            info!("最新版本：\t{}", v);
         } else {
             v = pyver.to_owned();
             if regex_find(r"^\d+\.\d+\.\d+$", &v).is_none() {
                 return Err("版本号格式错误".into());
             }
-            println!("指定版本：\t{}", v);
+            info!("指定版本：\t{}", v);
         }
 
         let info = get_python_download_info(&v, is32).await?;
-        println!("下载链接：\t{}", info.0);
-        println!("文件哈希：\t{}", info.1);
+        info!("下载链接：\t{}", info.0);
+        info!("文件哈希：\t{}", info.1);
 
         let mut arch = "amd64";
         if is32 {
@@ -141,62 +162,63 @@ async fn main() -> Result<()> {
             if let Ok(pyembeddata) = std::fs::read(&mainpath) {
                 let hash = format!("{:x}", md5::compute(&pyembeddata));
                 if hash.eq_ignore_ascii_case(&info.1) {
-                    println!("文件已存在，跳过下载");
+                    info!("文件已存在，跳过下载");
                     mainfileexists = true;
                 }
             }
         }
 
         if !mainfileexists {
-            println!("正在下载 ...");
-            let pyembeddata = download_progress(&info.0, &simple_progress)?;
+            info!("正在下载 ...");
+            let pyembeddata = download_progress(&info.0, &simple_progress).await?;
             //let pyembeddata = std::fs::read(r"D:\下载\python-3.8.5-embed-amd64.zip")?;
             print!("\r");
-            println!("校验文件完整性 ...");
+            info!("校验文件完整性 ...");
             let hash = format!("{:x}", md5::compute(&pyembeddata));
             if !hash.eq_ignore_ascii_case(&info.1) {
-                println!("文件哈希不匹配");
-                println!("预期：\t{}", info.1);
-                println!("实际：\t{}", hash);
+                info!("文件哈希不匹配");
+                info!("预期：\t{}", info.1);
+                info!("实际：\t{}", hash);
                 return Err("文件哈希不匹配".into());
             }
 
             std::fs::write(&mainpath, &pyembeddata)?;
         }
 
-        println!("解压文件 ...");
+        info!("解压文件 ...");
         extract(&mainpath, &targetdir)?;
     }
 
     let pippath = workdir.join("get-pip.py");
     if !skipdownload || !pippath.exists() {
-        println!("正在下载 pip ...");
-        let pipdata = download_progress("https://bootstrap.pypa.io/get-pip.py", &simple_progress)?;
+        info!("正在下载 pip ...");
+        let pipdata =
+            download_progress("https://bootstrap.pypa.io/get-pip.py", &simple_progress).await?;
         print!("\r");
         //let pipdata = std::fs::read(r"D:\下载\get-pip.py")?;
         std::fs::write(&pippath, &pipdata)?;
     }
 
-    println!("修改 Python Path ...");
+    info!("修改 Python Path ...");
     ensure_pth(&targetdir)?;
 
-    println!("安装 pip ...");
+    info!("安装 pip ...");
     setup_pip(&targetdir, &pippath, pipmirror)?;
     pip_install(&targetdir, &["pip"], pipmirror)?;
     pip_install(&targetdir, &["setuptools", "wheel"], pipmirror)?;
 
     if packages.len() > 0 {
-        println!("安装依赖包 ...");
+        info!("安装依赖包 ...");
         pip_install(&targetdir, &packages, pipmirror)?;
     }
 
-    println!("编译 ...");
+    info!("编译 ...");
     compile(&targetdir)?;
 
-    println!("安装结果");
+    info!("安装结果");
     pip_list(&targetdir)?;
 
-    println!("清理 ...");
+    info!("清理 ...");
     cleanup(&targetdir, keeppip, keepscripts, keepdistinfo)?;
 
     native::MessageBoxW("完成！", winapi::um::winuser::MB_ICONINFORMATION);
@@ -270,17 +292,43 @@ if not FOUND_PYD:
     cmd.arg(dir);
     cmd.env("PYTHONIOENCODING", "utf-8");
     cmd.stdin(std::process::Stdio::piped());
+    cmd.stdout(std::process::Stdio::piped());
+    cmd.stderr(std::process::Stdio::piped());
     let mut process = cmd.spawn()?;
     process
         .stdin
         .as_mut()
         .unwrap()
         .write_all(script.as_bytes())?;
+    let stdout = process.stdout.take().unwrap();
+    let stderr = process.stderr.take().unwrap();
+    let t1 = read_to_log(stdout, log::Level::Info);
+    let t2 = read_to_log(stderr, log::Level::Error);
     let status = process.wait()?;
+    t1.join().unwrap();
+    t2.join().unwrap();
     if !status.success() {
         return Err(format!("编译失败 [{}]", status).into());
     }
     Ok(())
+}
+
+fn read_to_log(
+    read: impl std::io::Read + Send + 'static,
+    level: log::Level,
+) -> std::thread::JoinHandle<()> {
+    use std::io::BufRead;
+    std::thread::spawn(move || {
+        let mut reader = std::io::BufReader::new(read);
+        loop {
+            let mut line = String::new();
+            let n = reader.read_line(&mut line).unwrap();
+            if n == 0 {
+                break;
+            }
+            log!(level, "{}", line.trim());
+        }
+    })
 }
 
 fn cleanup(
@@ -500,34 +548,29 @@ async fn get_python_download_info(ver: &str, is32: bool) -> Result<(String, Stri
     Err("找不到信息".into())
 }
 
-fn download_progress(
+async fn download_progress(
     url: impl reqwest::IntoUrl,
     callback: &dyn Fn(i64, i64),
 ) -> Result<bytes::Bytes> {
     use bytes::BufMut;
+    use tokio::stream::StreamExt;
 
-    let mut res = reqwest::blocking::get(url)?;
+    let res = reqwest::get(url).await?;
     if !res.status().is_success() {
         let code: u16 = res.status().into();
         return Err(format!("http request failed with status code {}", code).into());
     }
     let mut data = bytes::BytesMut::new();
-    let buf_size = 0x10000;
-    let mut buf = vec![0u8; buf_size];
     let mut total_size: i64 = -1;
-    let mut read_size: i64 = 0;
     if let Some(len) = res.headers().get(reqwest::header::CONTENT_LENGTH) {
         total_size = len.to_str()?.parse::<i64>()?;
     }
-    callback(total_size, read_size);
-    loop {
-        let bytes_read = std::io::Read::read(&mut res, &mut buf)?;
-        if bytes_read == 0 {
-            break;
-        }
-        data.put(&buf[0..bytes_read]);
-        read_size += bytes_read as i64;
-        callback(total_size, read_size);
+    callback(total_size, 0);
+    let mut stream = res.bytes_stream();
+    while let Some(item) = stream.next().await {
+        let item = item?;
+        data.put(item);
+        callback(total_size, data.len() as _);
     }
     Ok(data.into())
 }
