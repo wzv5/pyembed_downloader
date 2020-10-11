@@ -229,7 +229,7 @@ impl<'a> Dialog<'a> {
     unsafe extern "system" fn dlgproc(hwnd: HWND, msg: UINT, wp: WPARAM, lp: LPARAM) -> INT_PTR {
         let this: *mut Self;
         if msg == WM_INITDIALOG {
-            winuser::SetWindowLongPtrW(hwnd, GWLP_USERDATA, lp);
+            winuser::SetWindowLongPtrW(hwnd, GWLP_USERDATA, lp as _);
             this = lp as _;
             this.as_mut().unwrap().hwnd = hwnd;
         } else {
