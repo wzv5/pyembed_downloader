@@ -26,7 +26,7 @@ pub async fn run(config: &config::Config, progress_callback: &dyn Fn(i64, i64)) 
     if config.skip_download {
         warn!("正在检查本地 Python 版本 ...");
         let v = get_local_python_version(&targetdir)?;
-        info!("本地版本：\t{}.{}.{}", v.0, v.1, v.2);
+        info!("本地版本：{}.{}.{}", v.0, v.1, v.2);
     } else {
         if !is_empty_dir(&targetdir)? {
             return Err(format!("{} 目录非空", targetdir.display()).into());
@@ -34,20 +34,21 @@ pub async fn run(config: &config::Config, progress_callback: &dyn Fn(i64, i64)) 
 
         let v;
         if config.pyver == "latest" || config.pyver.is_empty() {
+            warn!("正在获取最新版本号 ...");
             v = get_latest_python_version().await?;
-            info!("最新版本：\t{}", v);
+            info!("最新版本：{}", v);
         } else {
             v = config.pyver.clone();
             if utility::regex_find(r"^\d+\.\d+\.\d+$", &v).is_none() {
                 return Err("版本号格式错误".into());
             }
-            info!("指定版本：\t{}", v);
+            info!("指定版本：{}", v);
         }
 
         warn!("正在获取下载信息 ...");
         let info = get_python_download_info(&v, config.is32).await?;
-        info!("下载链接：\t{}", info.0);
-        info!("文件哈希：\t{}", info.1);
+        info!("下载链接：{}", info.0);
+        info!("文件哈希：{}", info.1);
 
         let mut arch = "amd64";
         if config.is32 {
@@ -76,8 +77,8 @@ pub async fn run(config: &config::Config, progress_callback: &dyn Fn(i64, i64)) 
             let hash = format!("{:x}", md5::compute(&pyembeddata));
             if !hash.eq_ignore_ascii_case(&info.1) {
                 info!("文件哈希不匹配");
-                info!("预期：\t{}", info.1);
-                info!("实际：\t{}", hash);
+                info!("预期：{}", info.1);
+                info!("实际：{}", hash);
                 return Err("文件哈希不匹配".into());
             }
 
@@ -115,13 +116,13 @@ pub async fn run(config: &config::Config, progress_callback: &dyn Fn(i64, i64)) 
         pip_install(&targetdir, &config.packages, Some(&config.pip_mirror))?;
     }
 
-    warn!("编译 ...");
+    warn!("正在编译 ...");
     compile(&targetdir)?;
 
     info!("安装结果");
     pip_list(&targetdir)?;
 
-    warn!("清理 ...");
+    warn!("正在清理 ...");
     cleanup(
         &targetdir,
         config.keep_pip,
@@ -200,18 +201,13 @@ if not FOUND_PYD:
     cmd.arg(dir);
     cmd.env("PYTHONIOENCODING", "utf-8");
     cmd.stdin(std::process::Stdio::piped());
-    cmd.stdout(std::process::Stdio::piped());
-    cmd.stderr(std::process::Stdio::piped());
     let mut process = cmd.spawn()?;
     process
         .stdin
         .as_mut()
         .unwrap()
         .write_all(script.as_bytes())?;
-    let stdout = process.stdout.take().unwrap();
-    let stderr = process.stderr.take().unwrap();
-    let t1 = read_to_log(stdout, log::Level::Info);
-    let t2 = read_to_log(stderr, log::Level::Error);
+    let (t1, t2) = process_output_to_log(&mut process);
     let status = process.wait()?;
     t1.join().unwrap();
     t2.join().unwrap();
@@ -219,24 +215,6 @@ if not FOUND_PYD:
         return Err(format!("编译失败 [{}]", status).into());
     }
     Ok(())
-}
-
-fn read_to_log(
-    read: impl std::io::Read + Send + 'static,
-    level: log::Level,
-) -> std::thread::JoinHandle<()> {
-    use std::io::BufRead;
-    std::thread::spawn(move || {
-        let mut reader = std::io::BufReader::new(read);
-        loop {
-            let mut line = String::new();
-            let n = reader.read_line(&mut line).unwrap();
-            if n == 0 {
-                break;
-            }
-            log!(level, "{}", line.trim());
-        }
-    })
 }
 
 fn cleanup(
@@ -281,7 +259,11 @@ fn setup_pip(dir: &std::path::Path, pip: &std::path::Path, mirror: Option<&str>)
             cmd.args(&["-i", mirror]);
         }
     }
-    let status = cmd.spawn()?.wait()?;
+    let mut process = cmd.spawn()?;
+    let (t1, t2) = process_output_to_log(&mut process);
+    let status = process.wait()?;
+    t1.join().unwrap();
+    t2.join().unwrap();
     if !status.success() {
         return Err(format!("安装 pip 失败 [{}]", status).into());
     }
@@ -335,9 +317,40 @@ fn get_local_python_version(dir: &std::path::Path) -> Result<(u8, u8, u8)> {
 }
 
 fn new_python_command(dir: &std::path::Path) -> std::process::Command {
+    use std::os::windows::process::CommandExt;
     let mut cmd = std::process::Command::new(dir.join("python.exe"));
     cmd.current_dir(dir);
+    cmd.stdin(std::process::Stdio::null());
+    cmd.stdout(std::process::Stdio::piped());
+    cmd.stderr(std::process::Stdio::piped());
+    cmd.creation_flags(winapi::um::winbase::CREATE_NO_WINDOW);
     cmd
+}
+
+fn read_to_log(
+    read: impl std::io::Read + Send + 'static,
+    level: log::Level,
+) -> std::thread::JoinHandle<()> {
+    use std::io::BufRead;
+    std::thread::spawn(move || {
+        let mut reader = std::io::BufReader::new(read);
+        loop {
+            let mut line = String::new();
+            let n = reader.read_line(&mut line).unwrap();
+            if n == 0 {
+                break;
+            }
+            log!(level, "{}", line.trim());
+        }
+    })
+}
+
+fn process_output_to_log(process: &mut std::process::Child) -> (std::thread::JoinHandle<()>,std::thread::JoinHandle<()>) {
+    let stdout = process.stdout.take().unwrap();
+    let stderr = process.stderr.take().unwrap();
+    let t1 = read_to_log(stdout, log::Level::Info);
+    let t2 = read_to_log(stderr, log::Level::Error);
+    (t1, t2)
 }
 
 fn pip_install<I, S>(dir: &std::path::Path, pkgnames: I, mirror: Option<&str>) -> Result<()>
@@ -362,7 +375,11 @@ where
     for i in pkgnames {
         cmd.arg(i);
     }
-    let status = cmd.spawn()?.wait()?;
+    let mut process = cmd.spawn()?;
+    let (t1, t2) = process_output_to_log(&mut process);
+    let status = process.wait()?;
+    t1.join().unwrap();
+    t2.join().unwrap();
     if !status.success() {
         return Err(format!("安装依赖包失败 [{}]", status).into());
     }
@@ -379,7 +396,11 @@ where
     for i in pkgnames {
         cmd.arg(i);
     }
-    let status = cmd.spawn()?.wait()?;
+    let mut process = cmd.spawn()?;
+    let (t1, t2) = process_output_to_log(&mut process);
+    let status = process.wait()?;
+    t1.join().unwrap();
+    t2.join().unwrap();
     if !status.success() {
         return Err(format!("卸载依赖包失败 [{}]", status).into());
     }
