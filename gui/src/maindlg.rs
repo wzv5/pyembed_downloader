@@ -12,6 +12,9 @@ pub struct MainProc<'a> {
 
 impl<'a> dialog::DialogProc for MainProc<'a> {
     fn on_init(&mut self, dlg: &dialog::Dialog) -> bool {
+        if let Some(v) = option_env!("CARGO_PKG_VERSION") {
+            dlg.set_title(&format!("{} v{}", dlg.get_title(), v));
+        }
         // icon 没有释放，随便了
         let icon = dlg.load_icon(resources::ID_ICON_MAIN);
         dlg.set_icon(icon);

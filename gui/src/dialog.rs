@@ -79,6 +79,21 @@ impl<'a> Dialog<'a> {
         unsafe { winuser::EndDialog(self.hwnd, result) != 0 }
     }
 
+    pub fn get_title(&self) -> String {
+        unsafe {
+            let len = winapi::um::winuser::GetWindowTextLengthW(self.hwnd) + 1;
+            let mut buf = vec![0; len as _];
+            let ret = winuser::GetWindowTextW(self.hwnd, buf.as_mut_ptr(), buf.len() as _);
+            String::from_utf16(&buf[..ret as _]).unwrap()
+        }
+    }
+
+    pub fn set_title(&self, title: &str) {
+        unsafe {
+            winuser::SetWindowTextW(self.hwnd, to_wstring(title).as_ptr());
+        }
+    }
+
     pub fn get_item_text(&self, id: i32) -> String {
         unsafe {
             let len = winapi::um::winuser::GetWindowTextLengthW(self.get_item(id)) + 1;

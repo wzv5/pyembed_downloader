@@ -21,7 +21,7 @@ async fn main() -> Result<()> {
     log::set_logger(&MYLOGGER).unwrap();
     log::set_max_level(log::LevelFilter::Info);
     let matches = clap::App::new("pyembed_downloader")
-        .version("0.0.5")
+        .version(clap::crate_version!())
         .arg(
             clap::Arg::with_name("pyver")
                 .long("py-ver")
