@@ -1,30 +1,8 @@
-[package]
-name = "pyembed_downloader"
-version = "0.1.0"
-authors = ["wzv5 <wzv5@msn.com>"]
-edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-reqwest = { version = "0.10.8", features = ["stream"] }
-regex = "1.3.9"
-tokio = { version = "0.2.22", features = ["macros"] }
-bytes = "0.5.6"
-md5 = "0.7.0"
-zip = "0.5.8"
-clap = "2.33.3"
-log = "0.4.11"
-
-[dependencies.winapi]
-version = "0.3.9"
-features = [
-    "winnt",
-    "jobapi2",
-    "minwindef",
-    "processthreadsapi",
-    "winuser",
-    "wincon"
+[workspace]
+members = [
+    "pyembed_downloader",
+    "cli",
+    "gui"
 ]
 
 [profile.release]

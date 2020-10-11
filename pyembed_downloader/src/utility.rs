@@ -2,13 +2,13 @@ use crate::Result;
 
 // https://github.com/rust-lang/cargo/blob/master/src/cargo/util/job.rs
 // 简单一抄，凑合能用
-pub fn setup_job() -> Result<()> {
+pub(crate) fn setup_job() -> Result<()> {
     unsafe {
         use winapi::shared::minwindef::*;
         use winapi::um::jobapi2::*;
         use winapi::um::processthreadsapi::*;
         use winapi::um::winnt::*;
-    
+
         let job = CreateJobObjectW(std::ptr::null_mut(), std::ptr::null());
         if job.is_null() {
             return Err("CreateJobObject failed".into());
@@ -34,19 +34,12 @@ pub fn setup_job() -> Result<()> {
     }
 }
 
-#[allow(non_snake_case)]
-pub fn MessageBoxW(text: &str, typ: u32) -> u32 {
-    unsafe {
-        let hwnd = winapi::um::wincon::GetConsoleWindow();
-        let text = str_to_wide(text);
-        let caption = str_to_wide("pyembed_downloader");
-        winapi::um::winuser::MessageBoxW(hwnd, text.as_ptr(), caption.as_ptr(), typ) as _
+pub fn regex_find<'a>(re: &str, text: &'a str) -> Option<regex::Captures<'a>> {
+    if let Ok(re) = regex::RegexBuilder::new(re)
+        .dot_matches_new_line(true)
+        .build()
+    {
+        return re.captures(text);
     }
-}
-
-fn str_to_wide(s: &str) -> Vec<u16> {
-    use std::ffi::OsStr;
-    use std::iter::once;
-    use std::os::windows::ffi::OsStrExt;
-    OsStr::new(s).encode_wide().chain(once(0)).collect()
+    None
 }
