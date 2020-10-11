@@ -63,6 +63,7 @@ impl dialog::DialogProc for DownloadProc {
                 if text == "重试" {
                     dlg.processbar_marquee(resources::IDC_PGB1, true);
                     self.create_work_thread();
+                    dlg.set_timer(resources::ID_TIMER_RECEIVER, 100);
                 } else {
                     dlg.end_dialog(0);
                 }
