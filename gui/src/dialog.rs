@@ -5,8 +5,8 @@ use winapi::shared::basetsd::{INT_PTR, UINT_PTR};
 use winapi::shared::minwindef::{DWORD, HINSTANCE, HIWORD, LOWORD, LPARAM, LRESULT, UINT, WPARAM};
 use winapi::shared::windef::{HICON, HWND};
 use winapi::um::commctrl::{
-    PBM_GETPOS, PBM_SETMARQUEE, PBM_SETPOS, PBM_SETRANGE, PBS_MARQUEE, TOOLINFOW, TOOLTIPS_CLASS,
-    TTF_IDISHWND, TTF_SUBCLASS, TTM_ADDTOOLW, TTS_ALWAYSTIP,
+    PBM_GETPOS, PBM_GETSTATE, PBM_SETMARQUEE, PBM_SETPOS, PBM_SETRANGE, PBM_SETSTATE, PBS_MARQUEE,
+    TOOLINFOW, TOOLTIPS_CLASS, TTF_IDISHWND, TTF_SUBCLASS, TTM_ADDTOOLW, TTS_ALWAYSTIP,
 };
 use winapi::um::winuser;
 use winapi::um::winuser::{
@@ -210,6 +210,14 @@ impl<'a> Dialog<'a> {
 
     pub fn progressbar_get_pos(&self, id: i32) -> i32 {
         self.send_item_message(id, PBM_GETPOS, 0, 0) as _
+    }
+
+    pub fn progressbar_set_state(&self, id: i32, state: i32) -> i32 {
+        self.send_item_message(id, PBM_SETSTATE, state as _, 0) as _
+    }
+
+    pub fn progressbar_get_state(&self, id: i32) -> i32 {
+        self.send_item_message(id, PBM_GETSTATE, 0, 0) as _
     }
 
     pub fn message_box(&self, text: &str, caption: &str, typ: u32) -> i32 {

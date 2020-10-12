@@ -61,6 +61,10 @@ impl dialog::DialogProc for DownloadProc {
             resources::IDC_BTN_EXIT => {
                 let text = dlg.get_item_text(id);
                 if text == "重试" {
+                    dlg.progressbar_set_state(
+                        resources::IDC_PGB1,
+                        winapi::um::commctrl::PBST_NORMAL,
+                    );
                     dlg.set_item_text(id, "取消");
                     dlg.processbar_marquee(resources::IDC_PGB1, true);
                     self.create_work_thread();
@@ -99,11 +103,11 @@ impl dialog::DialogProc for DownloadProc {
                         }
                     }
                     Msg::Result(r) => {
+                        dlg.processbar_marquee(resources::IDC_PGB1, false);
+                        dlg.progressbar_set_range(resources::IDC_PGB1, 0, 100);
+                        dlg.progressbar_set_pos(resources::IDC_PGB1, 100);
                         match r {
                             Ok(_) => {
-                                dlg.processbar_marquee(resources::IDC_PGB1, false);
-                                dlg.progressbar_set_range(resources::IDC_PGB1, 0, 100);
-                                dlg.progressbar_set_pos(resources::IDC_PGB1, 100);
                                 dlg.set_item_text(resources::IDC_BTN_EXIT, "完成");
                                 dlg.message_box(
                                     "完成！",
@@ -112,6 +116,10 @@ impl dialog::DialogProc for DownloadProc {
                                 );
                             }
                             Err(e) => {
+                                dlg.progressbar_set_state(
+                                    resources::IDC_PGB1,
+                                    winapi::um::commctrl::PBST_ERROR,
+                                );
                                 dlg.set_item_text(resources::IDC_BTN_EXIT, "重试");
                                 let s = format!("错误：{}", e);
                                 error!("{}", s);
