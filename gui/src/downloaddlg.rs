@@ -61,6 +61,7 @@ impl dialog::DialogProc for DownloadProc {
             resources::IDC_BTN_EXIT => {
                 let text = dlg.get_item_text(id);
                 if text == "重试" {
+                    dlg.set_item_text(id, "取消");
                     dlg.processbar_marquee(resources::IDC_PGB1, true);
                     self.create_work_thread();
                     dlg.set_timer(resources::ID_TIMER_RECEIVER, 100);
@@ -79,7 +80,7 @@ impl dialog::DialogProc for DownloadProc {
 
     fn on_timer(&mut self, dlg: &dialog::Dialog, id: i32) -> bool {
         if id == resources::ID_TIMER_RECEIVER {
-            if let Ok(msg) = self.receiver.as_ref().unwrap().try_recv() {
+            while let Ok(msg) = self.receiver.as_ref().unwrap().try_recv() {
                 match msg {
                     Msg::Progress(total, read) => {
                         println!("进度：{} / {}", read, total);
