@@ -52,7 +52,12 @@ impl<'a> dialog::DialogProc for MainProc<'a> {
         }
         dlg.set_item_text(resources::IDC_EDT_PACKAGES, &packages);
         // 添加 tooltip
-        dlg.set_tooltip(resources::IDC_CHK_32, "tooltip");
+        dlg.set_tooltip(resources::IDC_CHK_VER, "下载指定版本的 Python，如 3.8.6，默认下载最新版");
+        dlg.set_tooltip(resources::IDC_CHK_32, "下载 32 位版本，默认下载 64 位版本");
+        dlg.set_tooltip(resources::IDC_CHK_SKIP_DOWNLOAD, "跳过下载，用于下载后想要添加或更新依赖包");
+        dlg.set_tooltip(resources::IDC_CHK_KEEP_SCRIPTS, "保留 Scripts 目录");
+        dlg.set_tooltip(resources::IDC_CHK_KEEP_DIST_INFO, "保留 dist-info 目录，删除此目录后将无法再通过 pip 管理依赖");
+        dlg.set_tooltip(resources::IDC_CHK_KEEP_PIP, "保留 pip、setuptools、wheel 依赖包");
         // 设置初始焦点
         unsafe {
             winuser::SetFocus(dlg.get_item(resources::IDC_EDT_PACKAGES));

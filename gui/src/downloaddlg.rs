@@ -83,7 +83,6 @@ impl dialog::DialogProc for DownloadProc {
             while let Ok(msg) = self.receiver.as_ref().unwrap().try_recv() {
                 match msg {
                     Msg::Progress(total, read) => {
-                        println!("进度：{} / {}", read, total);
                         if total == -1 {
                             dlg.processbar_marquee(resources::IDC_PGB1, true);
                         } else {

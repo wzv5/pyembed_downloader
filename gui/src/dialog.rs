@@ -151,9 +151,10 @@ impl<'a> Dialog<'a> {
                 info.cbSize = std::mem::size_of::<TOOLINFOW>() as _;
                 info.hwnd = self.hwnd;
                 info.uId = hwnd_tool as _;
-                info.lpszText = to_wstring(tooltip).as_mut_ptr();
+                let mut s = to_wstring(tooltip);
+                info.lpszText = s.as_mut_ptr();
                 info.uFlags = TTF_IDISHWND | TTF_SUBCLASS;
-                self.send_message(TTM_ADDTOOLW, 0, &info as *const _ as _);
+                winuser::SendMessageW(hwnd_tip, TTM_ADDTOOLW, 0, &info as *const _ as _);
             }
         }
     }
