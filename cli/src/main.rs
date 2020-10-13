@@ -108,21 +108,38 @@ async fn main() -> Result<()> {
         packages: packages.iter().map(|s| s.to_string()).collect(),
     };
 
+    let last_len = std::cell::Cell::new(0);
     let simple_progress = |total: i64, read: i64| {
         if total == -1 {
             if read == -1 {
+                print!("\r{}", " ".repeat(last_len.get()));
                 print!("\r");
             } else {
-                print!("\r{}", read);
+                let s = read.to_string();
+                last_len.set(s.chars().count());
+                print!("\r{}", s);
             }
         } else {
-            print!("\r{}%", 100 * read / total);
+            let p = 100 * read / total;
+            let p2 = 30 * read / total;
+            let s = format!(
+                "{}% [{}{}]",
+                p,
+                "█".repeat((p2) as _),
+                "-".repeat((30 - p2) as _)
+            );
+            last_len.set(s.chars().count());
+            print!("\r{}", s);
         }
         use std::io::Write;
         std::io::stdout().flush().unwrap();
     };
 
-    run(&config, &simple_progress).await
+    if atty::is(atty::Stream::Stdout) {
+        run(&config, &simple_progress).await
+    } else {
+        run(&config, &|_: i64, _: i64| {}).await
+    }
 }
 
 fn regex_find<'a>(re: &str, text: &'a str) -> Option<regex::Captures<'a>> {
