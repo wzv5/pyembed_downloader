@@ -178,7 +178,7 @@ def compile(dir):
             if i.lower().endswith(".py"):
                 print(f"编译：{shortname}")
                 try:
-                    py_compile.compile(fullname, fullname + "c", doraise=True)
+                    py_compile.compile(fullname, cfile=fullname + "c", dfile=shortname, doraise=True)
                 except:
                     print(f"编译失败，跳过：{shortname}")
                 else:
