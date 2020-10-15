@@ -16,10 +16,11 @@ pub const IDC_EDT_PACKAGES: i32 = 1013;
 pub const IDC_BTN_START: i32 = 1004;
 pub const IDC_LNK1: i32 = 1010;
 pub const IDC_CBO_MIRROR: i32 = 1012;
-pub const ID_TIMER_RECEIVER: i32 = 9999;
+pub const IDC_CHK_OPTIMIZE: i32 = 1014;
 
 pub const IDD_DLG_DOWNLOAD: u16 = 1100;
 pub const IDC_STC_STATUS: i32 = 1103;
 pub const IDC_PGB1: i32 = 1104;
 pub const IDC_EDT_LOG: i32 = 1101;
 pub const IDC_BTN_EXIT: i32 = 1102;
+pub const ID_TIMER_RECEIVER: i32 = 9999;

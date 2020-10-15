@@ -117,7 +117,7 @@ pub async fn run(config: &config::Config, progress_callback: &dyn Fn(i64, i64)) 
     }
 
     warn!("正在编译 ...");
-    compile(&targetdir)?;
+    compile(&targetdir, config.optimize)?;
 
     info!("安装结果");
     pip_list(&targetdir)?;
@@ -145,11 +145,11 @@ fn is_empty_dir(dir: &std::path::Path) -> Result<bool> {
     return Ok(true);
 }
 
-fn compile(dir: &std::path::Path) -> Result<()> {
-    _py_compile(dir)
+fn compile(dir: &std::path::Path, optimize: u8) -> Result<()> {
+    _py_compile(dir, optimize)
 }
 
-fn _py_compile(dir: &std::path::Path) -> Result<()> {
+fn _py_compile(dir: &std::path::Path, optimize: u8) -> Result<()> {
     let script = r#"
 # encoding: utf-8
 
@@ -159,6 +159,7 @@ import py_compile
 import shutil
 
 ROOT = sys.argv[1]
+OPTIMIZE = int(sys.argv[2])
 FOUND_PYD = False
 
 def compile(dir):
@@ -178,7 +179,7 @@ def compile(dir):
             if i.lower().endswith(".py"):
                 print(f"编译：{shortname}")
                 try:
-                    py_compile.compile(fullname, cfile=fullname + "c", dfile=shortname, doraise=True)
+                    py_compile.compile(fullname, cfile=fullname + "c", dfile=shortname, doraise=True, optimize=OPTIMIZE)
                 except:
                     print(f"编译失败，跳过：{shortname}")
                 else:
@@ -199,6 +200,7 @@ if not FOUND_PYD:
     let mut cmd = new_python_command(dir);
     cmd.arg("-");
     cmd.arg(dir);
+    cmd.arg(optimize.to_string());
     cmd.env("PYTHONIOENCODING", "utf-8");
     cmd.stdin(std::process::Stdio::piped());
     let mut process = cmd.spawn()?;

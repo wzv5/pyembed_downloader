@@ -69,6 +69,16 @@ async fn main() -> Result<()> {
                 .help("保留 pip、setuptools、wheel 依赖包"),
         )
         .arg(
+            clap::Arg::with_name("optimize")
+                .long("optimize")
+                .takes_value(true)
+                .value_name("level")
+                .default_value("0")
+                .help(
+                    "优化编译级别：0（不优化），1（删除断言，关闭调试），2（同时删除文档字符串）",
+                ),
+        )
+        .arg(
             clap::Arg::with_name("PACKAGES")
                 .index(1)
                 .multiple(true)
@@ -91,6 +101,11 @@ async fn main() -> Result<()> {
     let keepdistinfo = matches.is_present("keep-dist-info");
     let keeppip = matches.is_present("keep-pip");
     let packages: Vec<&str> = matches.values_of("PACKAGES").unwrap_or_default().collect();
+    let optimize = matches
+        .value_of("optimize")
+        .unwrap_or_default()
+        .parse()
+        .unwrap();
 
     if !pyver.is_empty() && pyver != "latest" && regex_find(r"^\d+\.\d+\.\d+$", &pyver).is_none() {
         return Err("版本号格式错误".into());
@@ -105,6 +120,7 @@ async fn main() -> Result<()> {
         keep_scripts: keepscripts,
         keep_dist_info: keepdistinfo,
         keep_pip: keeppip,
+        optimize: optimize,
         packages: packages.iter().map(|s| s.to_string()).collect(),
     };
 

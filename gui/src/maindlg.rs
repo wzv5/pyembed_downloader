@@ -1,4 +1,4 @@
-use crate::{dialog, resources, Config, to_wstring};
+use crate::{dialog, resources, to_wstring, Config};
 use winapi::shared::basetsd::INT_PTR;
 use winapi::shared::minwindef::{LPARAM, UINT, WPARAM};
 use winapi::shared::windef::HWND;
@@ -37,6 +37,7 @@ impl<'a> dialog::DialogProc for MainProc<'a> {
             self.config.keep_dist_info,
         );
         dlg.set_check(resources::IDC_CHK_KEEP_PIP, self.config.keep_pip);
+        dlg.set_check(resources::IDC_CHK_OPTIMIZE, self.config.optimize > 0);
         for i in vec!["", "https://pypi.tuna.tsinghua.edu.cn/simple"] {
             dlg.send_item_message(
                 resources::IDC_CBO_MIRROR,
@@ -52,12 +53,28 @@ impl<'a> dialog::DialogProc for MainProc<'a> {
         }
         dlg.set_item_text(resources::IDC_EDT_PACKAGES, &packages);
         // 添加 tooltip
-        dlg.set_tooltip(resources::IDC_CHK_VER, "下载指定版本的 Python，如 3.8.6，默认下载最新版");
+        dlg.set_tooltip(
+            resources::IDC_CHK_VER,
+            "下载指定版本的 Python，如 3.8.6，默认下载最新版",
+        );
         dlg.set_tooltip(resources::IDC_CHK_32, "下载 32 位版本，默认下载 64 位版本");
-        dlg.set_tooltip(resources::IDC_CHK_SKIP_DOWNLOAD, "跳过下载，用于下载后想要添加或更新依赖包");
+        dlg.set_tooltip(
+            resources::IDC_CHK_SKIP_DOWNLOAD,
+            "跳过下载，用于下载后想要添加或更新依赖包",
+        );
+        dlg.set_tooltip(
+            resources::IDC_CHK_OPTIMIZE,
+            "优化编译，删除断言，关闭调试，删除文档字符串",
+        );
         dlg.set_tooltip(resources::IDC_CHK_KEEP_SCRIPTS, "保留 Scripts 目录");
-        dlg.set_tooltip(resources::IDC_CHK_KEEP_DIST_INFO, "保留 dist-info 目录，删除此目录后将无法再通过 pip 管理依赖");
-        dlg.set_tooltip(resources::IDC_CHK_KEEP_PIP, "保留 pip、setuptools、wheel 依赖包");
+        dlg.set_tooltip(
+            resources::IDC_CHK_KEEP_DIST_INFO,
+            "保留 dist-info 目录，删除此目录后将无法再通过 pip 管理依赖",
+        );
+        dlg.set_tooltip(
+            resources::IDC_CHK_KEEP_PIP,
+            "保留 pip、setuptools、wheel 依赖包",
+        );
         // 设置初始焦点
         unsafe {
             winuser::SetFocus(dlg.get_item(resources::IDC_EDT_PACKAGES));
@@ -98,8 +115,15 @@ impl<'a> dialog::DialogProc for MainProc<'a> {
                     ver = "latest".into();
                 }
                 if ver != "latest" {
-                    if !ver.is_empty() && ver != "latest" && regex_find(r"^\d+\.\d+\.\d+$", &ver).is_none() {
-                        dlg.message_box("版本号格式错误", crate::APP_NAME, winapi::um::winuser::MB_ICONERROR);
+                    if !ver.is_empty()
+                        && ver != "latest"
+                        && regex_find(r"^\d+\.\d+\.\d+$", &ver).is_none()
+                    {
+                        dlg.message_box(
+                            "版本号格式错误",
+                            crate::APP_NAME,
+                            winapi::um::winuser::MB_ICONERROR,
+                        );
                         return true;
                     }
                 }
@@ -108,6 +132,11 @@ impl<'a> dialog::DialogProc for MainProc<'a> {
                 self.config.pyver = ver;
                 self.config.is32 = dlg.get_check(resources::IDC_CHK_32);
                 self.config.skip_download = dlg.get_check(resources::IDC_CHK_SKIP_DOWNLOAD);
+                self.config.optimize = if dlg.get_check(resources::IDC_CHK_OPTIMIZE) {
+                    2
+                } else {
+                    0
+                };
                 self.config.pip_mirror = dlg.get_item_text(resources::IDC_CBO_MIRROR);
                 self.config.keep_scripts = dlg.get_check(resources::IDC_CHK_KEEP_SCRIPTS);
                 self.config.keep_dist_info = dlg.get_check(resources::IDC_CHK_KEEP_DIST_INFO);

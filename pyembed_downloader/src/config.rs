@@ -27,6 +27,9 @@ pub struct Config {
     // 保留 pip、setuptools、wheel 依赖包
     pub keep_pip: bool,
 
+    // 优化编译级别：0（不优化），1（移除断言，关闭调试），2（同时删除文档字符串）
+    pub optimize: u8,
+
     // 要安装的 pip 依赖包
     pub packages: Vec<String>,
 }
@@ -42,6 +45,7 @@ impl Default for Config{
             keep_scripts: false,
             keep_dist_info: false,
             keep_pip: false,
+            optimize: 0,
             packages: vec![],
         }
     }
