@@ -123,9 +123,14 @@ pub async fn run(config: &config::Config, progress_callback: &dyn Fn(i64, i64)) 
     pip_list(&targetdir)?;
 
     warn!("正在清理 ...");
+    let keeppip = config.keep_pip
+        || config
+            .packages
+            .iter()
+            .any(|i| i == "pip" || i == "setuptools" || i == "wheel");
     cleanup(
         &targetdir,
-        config.keep_pip,
+        keeppip,
         config.keep_scripts,
         config.keep_dist_info,
     )?;
@@ -347,7 +352,9 @@ fn read_to_log(
     })
 }
 
-fn process_output_to_log(process: &mut std::process::Child) -> (std::thread::JoinHandle<()>,std::thread::JoinHandle<()>) {
+fn process_output_to_log(
+    process: &mut std::process::Child,
+) -> (std::thread::JoinHandle<()>, std::thread::JoinHandle<()>) {
     let stdout = process.stdout.take().unwrap();
     let stderr = process.stderr.take().unwrap();
     let t1 = read_to_log(stdout, log::Level::Info);
