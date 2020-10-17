@@ -45,7 +45,7 @@ impl log::Log for EditBoxLogger {
             let mut len = winapi::um::winuser::GetWindowTextLengthW(hwnd);
             // msg.len() 虽然返回字节数而不是字符数，但这里宁多勿少
             if len + msg.len() as i32 > 30000 {
-                winapi::um::winuser::SetWindowTextW(hwnd, to_wstring("==== 在此截断 ====").as_ptr());
+                winapi::um::winuser::SetWindowTextW(hwnd, to_wstring("==== 在此截断 ====\r\n").as_ptr());
                 len = winapi::um::winuser::GetWindowTextLengthW(hwnd);
             }
             winapi::um::winuser::SendMessageW(
