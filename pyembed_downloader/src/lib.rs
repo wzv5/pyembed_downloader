@@ -13,7 +13,7 @@ pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 // 进度回调为 (total, read)
 // 如果进度回调都为 -1，则表示重置进度，对于 cli，重置光标到行首，对于 gui，把滚动条设置为不确定值状态
 pub async fn run(config: &config::Config, progress_callback: &dyn Fn(i64, i64)) -> Result<()> {
-    utility::setup_job()?;
+    let _job = utility::setup_job()?;
 
     let mut workdir = config.dir.clone();
     if workdir.is_relative() {
