@@ -7,9 +7,9 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-regex = "1.4.0"
-tokio = { version = "0.2.22", features = ["macros"] }
-log = "0.4.11"
-clap = "2.33.3"
-atty = "0.2.14"
+regex = "1.4"
+tokio = { version = "0.2", features = ["macros"] }
+log = "0.4"
+clap = "2.33"
+atty = "0.2"
 pyembed_downloader = { path = "../pyembed_downloader" }

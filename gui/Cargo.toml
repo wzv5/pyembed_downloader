@@ -7,14 +7,14 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-regex = "1.4.0"
-tokio = "0.2.22"
-log = "0.4.11"
-wfd = "0.1.4"
+regex = "1.4"
+tokio = "0.2"
+log = "0.4"
+wfd = "0.1"
 pyembed_downloader = { path = "../pyembed_downloader" }
 
 [dependencies.winapi]
-version = "0.3.9"
+version = "0.3"
 features = [
     "winuser",
     "libloaderapi",
@@ -25,4 +25,4 @@ features = [
 ]
 
 [build-dependencies]
-embed-resource = "1.3.3"
+embed-resource = "1.3"
