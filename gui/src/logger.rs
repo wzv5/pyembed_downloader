@@ -3,7 +3,11 @@
 use crate::to_wstring;
 
 // 反正已经各种 unsafe 了，不差这一点。。
-static mut LOGGER: EditBoxLogger = EditBoxLogger { hwnd: 0, hwnd_static: 0 };
+static mut LOGGER: EditBoxLogger = EditBoxLogger {
+    hwnd: 0,
+    hwnd_static: 0,
+    limit: 0,
+};
 
 pub fn init(level: log::Level) -> Result<(), log::SetLoggerError> {
     unsafe {
@@ -17,12 +21,26 @@ pub fn set_hwnd(hwnd: winapi::shared::windef::HWND, hwnd_static: winapi::shared:
     unsafe {
         LOGGER.hwnd = hwnd as _;
         LOGGER.hwnd_static = hwnd_static as _;
+        // 设置一个更大的缓冲区
+        winapi::um::winuser::SendMessageW(
+            hwnd,
+            winapi::um::winuser::EM_SETLIMITTEXT as _,
+            1 * 1024 * 1024,
+            0,
+        );
+        LOGGER.limit = winapi::um::winuser::SendMessageW(
+            hwnd,
+            winapi::um::winuser::EM_GETLIMITTEXT as _,
+            0,
+            0,
+        ) as _;
     }
 }
 
 struct EditBoxLogger {
     hwnd: isize,
-    hwnd_static: isize
+    hwnd_static: isize,
+    limit: i32,
 }
 
 impl log::Log for EditBoxLogger {
@@ -39,13 +57,19 @@ impl log::Log for EditBoxLogger {
             // 通过 warn 级别日志来设置状态
             if record.level() == log::Level::Warn {
                 let status = format!("{}", record.args());
-                winapi::um::winuser::SetWindowTextW(self.hwnd_static as _, to_wstring(&status).as_ptr());
+                winapi::um::winuser::SetWindowTextW(
+                    self.hwnd_static as _,
+                    to_wstring(&status).as_ptr(),
+                );
             }
             let msg = format!("{}\r\n", record.args());
             let mut len = winapi::um::winuser::GetWindowTextLengthW(hwnd);
             // msg.len() 虽然返回字节数而不是字符数，但这里宁多勿少
-            if len + msg.len() as i32 > 30000 {
-                winapi::um::winuser::SetWindowTextW(hwnd, to_wstring("==== 在此截断 ====\r\n").as_ptr());
+            if len + msg.len() as i32 > self.limit {
+                winapi::um::winuser::SetWindowTextW(
+                    hwnd,
+                    to_wstring("==== 在此截断 ====\r\n").as_ptr(),
+                );
                 len = winapi::um::winuser::GetWindowTextLengthW(hwnd);
             }
             winapi::um::winuser::SendMessageW(
