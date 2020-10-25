@@ -21,7 +21,10 @@ features = [
     "commctrl",
     "shellapi",
     "windef",
-    "basetsd"
+    "basetsd",
+    "shobjidl_core",
+    "combaseapi",
+    "unknwnbase"
 ]
 
 [build-dependencies]

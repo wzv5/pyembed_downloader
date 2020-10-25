@@ -14,6 +14,10 @@ use pyembed_downloader::{run, Config};
 static APP_NAME: &'static str = "pyembed_downloader";
 
 fn main() {
+    unsafe {
+        winapi::um::objbase::CoInitialize(std::ptr::null_mut());
+    }
+
     let mut config = Config::default();
     if dialog::Dialog::show(
         resources::IDD_DLG_MAIN,
