@@ -20,6 +20,13 @@
 
 <https://github.com/wzv5/pyembed_downloader/releases/latest>
 
+或者使用 [Scoop](https://scoop.sh)：
+
+```
+scoop bucket add wzv5 https://github.com/wzv5/ScoopBucket
+scoop install wzv5/pyembed-downloader
+```
+
 分为 CLI 和 GUI 版本，功能相同，随意选择使用。
 
 ## 截图
