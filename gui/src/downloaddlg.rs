@@ -140,6 +140,7 @@ impl<'a> dialog::DialogProc for DownloadProc<'a> {
                         self.set_progress(dlg, total, read);
                     }
                     Msg::Result(r) => {
+                        self.set_progress(dlg, 100, 0);
                         self.set_progress(dlg, 100, 100);
                         match r {
                             Ok(_) => {
