@@ -206,7 +206,6 @@ if not FOUND_PYD:
     cmd.arg("-");
     cmd.arg(dir);
     cmd.arg(optimize.to_string());
-    cmd.env("PYTHONIOENCODING", "utf-8");
     cmd.stdin(std::process::Stdio::piped());
     let mut process = cmd.spawn()?;
     process
@@ -326,6 +325,7 @@ fn get_local_python_version(dir: &std::path::Path) -> Result<(u8, u8, u8)> {
 fn new_python_command(dir: &std::path::Path) -> std::process::Command {
     use std::os::windows::process::CommandExt;
     let mut cmd = std::process::Command::new(dir.join("python.exe"));
+    cmd.env("PYTHONIOENCODING", "utf-8");
     cmd.current_dir(dir);
     cmd.stdin(std::process::Stdio::null());
     cmd.stdout(std::process::Stdio::piped());
@@ -342,11 +342,12 @@ fn read_to_log(
     std::thread::spawn(move || {
         let mut reader = std::io::BufReader::new(read);
         loop {
-            let mut line = String::new();
-            let n = reader.read_line(&mut line).unwrap();
+            let mut buf = vec![];
+            let n = reader.read_until(b'\n', &mut buf).unwrap();
             if n == 0 {
                 break;
             }
+            let line = String::from_utf8_lossy(&buf);
             log!(level, "{}", line.trim());
         }
     })
