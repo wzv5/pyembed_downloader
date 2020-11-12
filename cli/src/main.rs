@@ -141,7 +141,7 @@ async fn main() -> Result<()> {
             let s = format!(
                 "{}% [{}{}]",
                 p,
-                "█".repeat((p2) as _),
+                "#".repeat((p2) as _),
                 "-".repeat((30 - p2) as _)
             );
             last_len.set(s.chars().count());
