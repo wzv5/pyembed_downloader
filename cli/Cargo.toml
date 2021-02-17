@@ -1,6 +1,6 @@
 [package]
 name = "pyembed_downloader_cli"
-version = "0.1.5"
+version = "0.1.6"
 authors = ["wzv5 <wzv5@msn.com>"]
 edition = "2018"
 
