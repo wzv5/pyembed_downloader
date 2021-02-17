@@ -14,6 +14,8 @@ use winapi::um::winuser::{
     NMHDR, WM_COMMAND, WM_INITDIALOG, WM_NOTIFY, WM_SETICON, WM_TIMER, WS_POPUP,
 };
 
+const DWL_MSGRESULT: i32 = 0;
+
 // 对话框消息处理
 // 如果返回 true 则表示已处理该消息，并使用 result 作为返回值
 // 先调用 on_message，如果 on_message 返回 true 就不再调用其他处理方法
@@ -23,7 +25,7 @@ pub trait DialogProc {
     fn on_command(&mut self, dlg: &Dialog, id: i32, code: i32, hwnd: HWND) -> bool;
     fn on_notify(&mut self, dlg: &Dialog, id: i32, nmhdr: &NMHDR) -> bool;
     fn on_timer(&mut self, dlg: &Dialog, id: i32) -> bool;
-    fn on_message(&mut self, dlg: &Dialog, msg: UINT, wp: WPARAM, lp: LPARAM, result: &mut INT_PTR) -> bool;
+    fn on_message(&mut self, dlg: &Dialog, msg: UINT, wp: WPARAM, lp: LPARAM, result: &mut LRESULT) -> bool;
 }
 
 pub struct Dialog<'a> {
@@ -248,9 +250,10 @@ impl<'a> Dialog<'a> {
             let ref mut proc = this.as_mut().unwrap().proc;
             if let Some(proc) = proc {
                 let dlg = this.as_ref().unwrap();
-                let mut result: INT_PTR = 0;
+                let mut result: LRESULT = 0;
                 if proc.on_message(dlg, msg, wp, lp, &mut result) {
-                    return result;
+                    winuser::SetWindowLongW(hwnd, DWL_MSGRESULT, result as _);
+                    return true as _;
                 }
                 return match msg {
                     WM_INITDIALOG => proc.on_init(dlg),

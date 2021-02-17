@@ -1,5 +1,5 @@
 use crate::{dialog, resources, to_wstring, Config};
-use winapi::shared::basetsd::INT_PTR;
+use winapi::shared::minwindef::LRESULT;
 use winapi::shared::minwindef::{LPARAM, UINT, WPARAM};
 use winapi::shared::windef::HWND;
 use winapi::um::commctrl::{NM_CLICK, NM_RETURN, PNMLINK};
@@ -211,7 +211,7 @@ impl<'a> dialog::DialogProc for MainProc<'a> {
         _msg: UINT,
         _wp: WPARAM,
         _lp: LPARAM,
-        _result: &mut INT_PTR,
+        _result: &mut LRESULT,
     ) -> bool {
         false
     }

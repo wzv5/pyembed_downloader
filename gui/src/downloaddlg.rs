@@ -1,5 +1,5 @@
 use crate::{dialog, logger, resources, run, Config};
-use winapi::shared::basetsd::INT_PTR;
+use winapi::shared::minwindef::LRESULT;
 use winapi::shared::minwindef::{LPARAM, UINT, WPARAM};
 use winapi::shared::windef::HWND;
 use winapi::um::winuser::{IDCANCEL, NMHDR};
@@ -176,6 +176,7 @@ impl<'a> dialog::DialogProc for DownloadProc<'a> {
                     }
                 };
             }
+            return true;
         }
         false
     }
@@ -186,7 +187,7 @@ impl<'a> dialog::DialogProc for DownloadProc<'a> {
         _msg: UINT,
         _wp: WPARAM,
         _lp: LPARAM,
-        _result: &mut INT_PTR,
+        _result: &mut LRESULT,
     ) -> bool {
         false
     }
