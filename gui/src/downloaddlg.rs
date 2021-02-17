@@ -36,7 +36,7 @@ impl<'a> DownloadProc<'a> {
         let (s, r) = std::sync::mpsc::channel::<Msg>();
         self.receiver = Some(r);
         std::thread::spawn(move || {
-            let mut rt = tokio::runtime::Runtime::new().unwrap();
+            let rt = tokio::runtime::Builder::new_multi_thread().build().unwrap();
             let result = rt.block_on(run(&config, &|a: i64, b: i64| {
                 s.send(Msg::Progress(a, b)).unwrap();
             }));

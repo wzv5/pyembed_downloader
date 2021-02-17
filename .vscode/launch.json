@@ -12,7 +12,7 @@
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
-            "externalConsole": false,
+            "console": "integratedTerminal",
             "preLaunchTask": "rust: cargo build"
         },
         {
@@ -23,7 +23,7 @@
             "args": [],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
-            "externalConsole": false,
+            "console": "integratedTerminal",
             "preLaunchTask": "rust: cargo build (release)"
         }
     ]

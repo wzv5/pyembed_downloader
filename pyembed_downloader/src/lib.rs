@@ -498,7 +498,7 @@ async fn download_progress(
     callback: &dyn Fn(i64, i64),
 ) -> Result<bytes::Bytes> {
     use bytes::BufMut;
-    use tokio::stream::StreamExt;
+    use futures_util::StreamExt;
 
     let res = reqwest::get(url).await?;
     if !res.status().is_success() {

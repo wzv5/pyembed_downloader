@@ -7,13 +7,13 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-reqwest = { version = "0.10", features = ["stream"] }
+reqwest = { version = "0.11", features = ["stream"] }
 regex = "1.4"
-tokio = "0.2"
-bytes = "0.5"
+bytes = "1.0"
 md5 = "0.7"
 zip = "0.5"
 log = "0.4"
+futures-util = "0.3"
 
 [dependencies.winapi]
 version = "0.3"
