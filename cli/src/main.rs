@@ -47,6 +47,13 @@ async fn main() -> Result<()> {
                 .help("工作目录，默认为当前目录"),
         )
         .arg(
+            clap::Arg::with_name("python-mirror")
+                .long("python-mirror")
+                .takes_value(true)
+                .value_name("url")
+                .help("通过指定的镜像站下载 Python 安装包"),
+        )
+        .arg(
             clap::Arg::with_name("pip-mirror")
                 .long("pip-mirror")
                 .takes_value(true)
@@ -86,20 +93,24 @@ async fn main() -> Result<()> {
         )
         .get_matches();
 
-    let workdir = match matches.value_of_os("dir") {
+    let dir = match matches.value_of_os("dir") {
         None => std::env::current_dir()?,
         Some(s) => std::path::PathBuf::from(s),
     };
     let pyver = matches.value_of("pyver").unwrap_or_default().to_string();
     let is32 = matches.is_present("32");
-    let skipdownload = matches.is_present("skip-download");
-    let pipmirror = matches
+    let skip_download = matches.is_present("skip-download");
+    let python_mirror = matches
+        .value_of("python-mirror")
+        .unwrap_or_default()
+        .to_string();
+    let pip_mirror = matches
         .value_of("pip-mirror")
         .unwrap_or_default()
         .to_string();
-    let keepscripts = matches.is_present("keep-scripts");
-    let keepdistinfo = matches.is_present("keep-dist-info");
-    let keeppip = matches.is_present("keep-pip");
+    let keep_scripts = matches.is_present("keep-scripts");
+    let keep_dist_info = matches.is_present("keep-dist-info");
+    let keep_pip = matches.is_present("keep-pip");
     let packages: Vec<&str> = matches.values_of("PACKAGES").unwrap_or_default().collect();
     let optimize = matches
         .value_of("optimize")
@@ -112,15 +123,16 @@ async fn main() -> Result<()> {
     }
 
     let config = Config {
-        dir: workdir,
-        pyver: pyver,
-        is32: is32,
-        skip_download: skipdownload,
-        pip_mirror: pipmirror,
-        keep_scripts: keepscripts,
-        keep_dist_info: keepdistinfo,
-        keep_pip: keeppip,
-        optimize: optimize,
+        dir,
+        pyver,
+        is32,
+        skip_download,
+        python_mirror,
+        pip_mirror,
+        keep_scripts,
+        keep_dist_info,
+        keep_pip,
+        optimize,
         packages: packages.iter().map(|s| s.to_string()).collect(),
     };
 

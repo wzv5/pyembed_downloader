@@ -32,28 +32,31 @@ pub async fn run(config: &config::Config, progress_callback: &dyn Fn(i64, i64)) 
             return Err(format!("{} 目录非空", targetdir.display()).into());
         }
 
-        let v;
-        if config.pyver == "latest" || config.pyver.is_empty() {
+        let v = if config.pyver == "latest" || config.pyver.is_empty() {
             warn!("正在获取最新版本号 ...");
-            v = get_latest_python_version().await?;
+            let v = get_latest_python_version().await?;
             info!("最新版本：{}", v);
+            v
         } else {
-            v = config.pyver.clone();
+            let v = config.pyver.clone();
             if utility::regex_find(r"^\d+\.\d+\.\d+$", &v).is_none() {
                 return Err("版本号格式错误".into());
             }
             info!("指定版本：{}", v);
-        }
+            v
+        };
 
         warn!("正在获取下载信息 ...");
-        let info = get_python_download_info(&v, config.is32).await?;
+        let python_mirror = if config.python_mirror.is_empty() {
+            None
+        } else {
+            Some(config.python_mirror.as_str())
+        };
+        let info = get_python_download_info(&v, config.is32, python_mirror).await?;
         info!("下载链接：{}", info.0);
         info!("文件哈希：{}", info.1);
 
-        let mut arch = "amd64";
-        if config.is32 {
-            arch = "x86";
-        }
+        let arch = if config.is32 { "x86" } else { "amd64" };
         let filename = format!("python-{}-embed-{}.zip", v, arch);
         let mainpath = workdir.join(filename);
 
@@ -103,17 +106,18 @@ pub async fn run(config: &config::Config, progress_callback: &dyn Fn(i64, i64)) 
     ensure_pth(&targetdir)?;
 
     warn!("安装 pip ...");
-    setup_pip(&targetdir, &pippath, Some(&config.pip_mirror))?;
-    pip_install(&targetdir, &["pip"], Some(&config.pip_mirror))?;
-    pip_install(
-        &targetdir,
-        &["setuptools", "wheel"],
-        Some(&config.pip_mirror),
-    )?;
+    let pip_mirror = if config.pip_mirror.is_empty() {
+        None
+    } else {
+        Some(config.pip_mirror.as_str())
+    };
+    setup_pip(&targetdir, &pippath, pip_mirror)?;
+    pip_install(&targetdir, &["pip"], pip_mirror)?;
+    pip_install(&targetdir, &["setuptools", "wheel"], pip_mirror)?;
 
     if config.packages.len() > 0 {
         warn!("安装依赖包 ...");
-        pip_install(&targetdir, &config.packages, Some(&config.pip_mirror))?;
+        pip_install(&targetdir, &config.packages, pip_mirror)?;
     }
 
     warn!("正在编译 ...");
@@ -261,9 +265,7 @@ fn setup_pip(dir: &std::path::Path, pip: &std::path::Path, mirror: Option<&str>)
     cmd.arg(pip);
     cmd.args(&["--no-cache-dir", "--no-warn-script-location"]);
     if let Some(mirror) = mirror {
-        if !mirror.is_empty() {
-            cmd.args(&["-i", mirror]);
-        }
+        cmd.args(&["-i", mirror]);
     }
     let mut process = cmd.spawn()?;
     let (t1, t2) = process_output_to_log(&mut process);
@@ -378,9 +380,7 @@ where
         "-U",
     ]);
     if let Some(mirror) = mirror {
-        if !mirror.is_empty() {
-            cmd.args(&["-i", mirror]);
-        }
+        cmd.args(&["-i", mirror]);
     }
     for i in pkgnames {
         cmd.arg(i);
@@ -472,22 +472,33 @@ async fn get_latest_python_version() -> Result<String> {
     Err("找不到版本号".into())
 }
 
-async fn get_python_download_info(ver: &str, is32: bool) -> Result<(String, String)> {
+async fn get_python_download_info(
+    ver: &str,
+    is32: bool,
+    mirror: Option<&str>,
+) -> Result<(String, String)> {
     let body = get(&format!(
         "https://www.python.org/downloads/release/python-{}/",
         ver.replace(".", "")
     ))
     .await?;
-    let mut re = r#""([^"]*?)">Windows x86\-64 embeddable zip file.*?([a-fA-F0-9]{32})"#;
-    if is32 {
-        re = r#""([^"]*?)">Windows x86 embeddable zip file.*?([a-fA-F0-9]{32})"#;
-    }
+    let re = if is32 {
+        r#""([^"]*?)">Windows x86 embeddable zip file.*?([a-fA-F0-9]{32})"#
+    } else {
+        r#""([^"]*?)">Windows x86\-64 embeddable zip file.*?([a-fA-F0-9]{32})"#
+    };
     if let Some(caps) = utility::regex_find(re, &body) {
         if caps.len() == 3 {
-            return Ok((
-                caps.get(1).unwrap().as_str().into(),
-                caps.get(2).unwrap().as_str().into(),
-            ));
+            let mut url = caps.get(1).unwrap().as_str().to_string();
+            let hash = caps.get(2).unwrap().as_str().to_string();
+            if let Some(mirror) = mirror {
+                // 只有官网下载链接是这个格式时才使用镜像站
+                url = url.replace(
+                    "https://www.python.org/ftp/python",
+                    mirror.trim_end_matches('/'),
+                );
+            }
+            return Ok((url, hash));
         }
     }
     Err("找不到信息".into())

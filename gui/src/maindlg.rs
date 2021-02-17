@@ -40,13 +40,22 @@ impl<'a> dialog::DialogProc for MainProc<'a> {
         dlg.set_check(resources::IDC_CHK_OPTIMIZE, self.config.optimize > 0);
         for i in vec!["", "https://pypi.tuna.tsinghua.edu.cn/simple"] {
             dlg.send_item_message(
-                resources::IDC_CBO_MIRROR,
+                resources::IDC_CBO_PIP_MIRROR,
                 winuser::CB_ADDSTRING,
                 0,
                 to_wstring(i).as_ptr() as _,
             );
         }
-        dlg.set_item_text(resources::IDC_CBO_MIRROR, &self.config.pip_mirror);
+        dlg.set_item_text(resources::IDC_CBO_PIP_MIRROR, &self.config.pip_mirror);
+        for i in vec!["", "https://npm.taobao.org/mirrors/python"] {
+            dlg.send_item_message(
+                resources::IDC_CBO_PYTHON_MIRROR,
+                winuser::CB_ADDSTRING,
+                0,
+                to_wstring(i).as_ptr() as _,
+            );
+        }
+        dlg.set_item_text(resources::IDC_CBO_PYTHON_MIRROR, &self.config.python_mirror);
         let mut packages = "".to_string();
         for i in self.config.packages.iter() {
             packages += &format!("{}\r\n", i);
@@ -137,7 +146,8 @@ impl<'a> dialog::DialogProc for MainProc<'a> {
                 } else {
                     0
                 };
-                self.config.pip_mirror = dlg.get_item_text(resources::IDC_CBO_MIRROR);
+                self.config.python_mirror = dlg.get_item_text(resources::IDC_CBO_PYTHON_MIRROR);
+                self.config.pip_mirror = dlg.get_item_text(resources::IDC_CBO_PIP_MIRROR);
                 self.config.keep_scripts = dlg.get_check(resources::IDC_CHK_KEEP_SCRIPTS);
                 self.config.keep_dist_info = dlg.get_check(resources::IDC_CHK_KEEP_DIST_INFO);
                 self.config.keep_pip = dlg.get_check(resources::IDC_CHK_KEEP_PIP);

@@ -15,7 +15,10 @@ pub struct Config {
     // 跳过下载，用于下载后想要添加或更新依赖包
     pub skip_download: bool,
 
-    // 通过指定镜像站下载，如果为空则不使用镜像站
+    // 通过指定镜像站下载 python 安装包，如果为空则不使用镜像站
+    pub python_mirror: String,
+
+    // 通过指定镜像站下载 pip 包，如果为空则不使用镜像站
     pub pip_mirror: String,
 
     // 保留 Scripts 目录
@@ -34,13 +37,14 @@ pub struct Config {
     pub packages: Vec<String>,
 }
 
-impl Default for Config{
+impl Default for Config {
     fn default() -> Self {
         Config {
             dir: std::env::current_dir().unwrap(),
             pyver: "latest".into(),
             is32: false,
             skip_download: false,
+            python_mirror: "".into(),
             pip_mirror: "".into(),
             keep_scripts: false,
             keep_dist_info: false,
