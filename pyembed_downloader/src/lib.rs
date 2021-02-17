@@ -483,9 +483,9 @@ async fn get_python_download_info(
     ))
     .await?;
     let re = if is32 {
-        r#""([^"]*?)">Windows x86 embeddable zip file.*?([a-fA-F0-9]{32})"#
+        r#""([^"]*?)">(?:Windows x86 embeddable zip file|Windows embeddable package \(32-bit\)).*?([a-fA-F0-9]{32})"#
     } else {
-        r#""([^"]*?)">Windows x86\-64 embeddable zip file.*?([a-fA-F0-9]{32})"#
+        r#""([^"]*?)">(?:Windows x86-64 embeddable zip file|Windows embeddable package \(64-bit\)).*?([a-fA-F0-9]{32})"#
     };
     if let Some(caps) = utility::regex_find(re, &body) {
         if caps.len() == 3 {
