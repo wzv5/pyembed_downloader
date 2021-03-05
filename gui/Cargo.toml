@@ -28,4 +28,4 @@ features = [
 ]
 
 [build-dependencies]
-embed-resource = "1.3"
+embed-resource = "1.6"
