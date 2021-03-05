@@ -22,6 +22,7 @@ pub async fn run(config: &config::Config, progress_callback: &dyn Fn(i64, i64)) 
     std::fs::create_dir_all(&workdir)?;
 
     let targetdir = workdir.join("pyembed_runtime");
+    let mut pyzippath = std::path::PathBuf::new();
 
     if config.skip_download {
         warn!("正在检查本地 Python 版本 ...");
@@ -58,20 +59,20 @@ pub async fn run(config: &config::Config, progress_callback: &dyn Fn(i64, i64)) 
 
         let arch = if config.is32 { "x86" } else { "amd64" };
         let filename = format!("python-{}-embed-{}.zip", v, arch);
-        let mainpath = workdir.join(filename);
+        pyzippath = workdir.join(filename);
 
-        let mut mainfileexists = false;
-        if mainpath.exists() {
-            if let Ok(pyembeddata) = std::fs::read(&mainpath) {
+        let mut pyzipexists = false;
+        if pyzippath.exists() {
+            if let Ok(pyembeddata) = std::fs::read(&pyzippath) {
                 let hash = format!("{:x}", md5::compute(&pyembeddata));
                 if hash.eq_ignore_ascii_case(&info.1) {
                     info!("文件已存在，跳过下载");
-                    mainfileexists = true;
+                    pyzipexists = true;
                 }
             }
         }
 
-        if !mainfileexists {
+        if !pyzipexists {
             warn!("正在下载 ...");
             let pyembeddata = download_progress(&info.0, progress_callback).await?;
             //let pyembeddata = std::fs::read(r"D:\下载\python-3.8.5-embed-amd64.zip")?;
@@ -85,22 +86,32 @@ pub async fn run(config: &config::Config, progress_callback: &dyn Fn(i64, i64)) 
                 return Err("文件哈希不匹配".into());
             }
 
-            std::fs::write(&mainpath, &pyembeddata)?;
+            std::fs::write(&pyzippath, &pyembeddata)?;
         }
-
-        warn!("解压文件 ...");
-        extract(&mainpath, &targetdir)?;
     }
 
     let pippath = workdir.join("get-pip.py");
     if !config.skip_download || !pippath.exists() {
         warn!("正在下载 pip ...");
-        let pipdata =
-            download_progress("https://bootstrap.pypa.io/get-pip.py", progress_callback).await?;
+        let pipdata = {
+            match download_progress("https://bootstrap.pypa.io/get-pip.py", progress_callback).await
+            {
+                Ok(data) => data,
+                Err(err) => {
+                    info!("下载 pip 失败：{}", err);
+                    warn!("正在从备用地址下载 pip ...");
+                    download_progress("https://github.com/pypa/get-pip/raw/main/public/get-pip.py", progress_callback)
+                        .await?
+                }
+            }
+        };
         progress_callback(-1, -1);
         //let pipdata = std::fs::read(r"D:\下载\get-pip.py")?;
         std::fs::write(&pippath, &pipdata)?;
     }
+
+    warn!("解压文件 ...");
+    extract(&pyzippath, &targetdir)?;
 
     warn!("修改 Python Path ...");
     ensure_pth(&targetdir)?;
