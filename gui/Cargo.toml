@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 regex = "1.4"
-tokio = { version = "1.2", features = ["rt-multi-thread"] }
+tokio = { version = "1.5", features = ["rt-multi-thread"] }
 log = "0.4"
 wfd = "0.1"
 pyembed_downloader = { path = "../pyembed_downloader" }
