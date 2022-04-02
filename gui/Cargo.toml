@@ -1,14 +1,14 @@
 [package]
 name = "pyembed_downloader_gui"
-version = "0.1.7"
+version = "0.1.8"
 authors = ["wzv5 <wzv5@msn.com>"]
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-regex = "1.4"
-tokio = { version = "1.2", features = ["rt-multi-thread"] }
+regex = "1.5"
+tokio = { version = "1.17", features = ["rt-multi-thread"] }
 log = "0.4"
 wfd = "0.1"
 pyembed_downloader = { path = "../pyembed_downloader" }
@@ -28,4 +28,4 @@ features = [
 ]
 
 [build-dependencies]
-embed-resource = "1.6"
+embed-resource = "1.7"

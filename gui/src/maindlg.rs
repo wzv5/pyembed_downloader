@@ -38,7 +38,7 @@ impl<'a> dialog::DialogProc for MainProc<'a> {
         );
         dlg.set_check(resources::IDC_CHK_KEEP_PIP, self.config.keep_pip);
         dlg.set_check(resources::IDC_CHK_OPTIMIZE, self.config.optimize > 0);
-        for i in vec!["", "https://pypi.tuna.tsinghua.edu.cn/simple"] {
+        for i in ["", "https://pypi.tuna.tsinghua.edu.cn/simple"] {
             dlg.send_item_message(
                 resources::IDC_CBO_PIP_MIRROR,
                 winuser::CB_ADDSTRING,
@@ -47,7 +47,7 @@ impl<'a> dialog::DialogProc for MainProc<'a> {
             );
         }
         dlg.set_item_text(resources::IDC_CBO_PIP_MIRROR, &self.config.pip_mirror);
-        for i in vec!["", "https://npm.taobao.org/mirrors/python"] {
+        for i in ["", "https://mirrors.huaweicloud.com/python", "https://registry.npmmirror.com/-/binary/python"] {
             dlg.send_item_message(
                 resources::IDC_CBO_PYTHON_MIRROR,
                 winuser::CB_ADDSTRING,

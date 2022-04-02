@@ -1,17 +1,17 @@
 [package]
 name = "pyembed_downloader"
-version = "0.1.7"
+version = "0.1.8"
 authors = ["wzv5 <wzv5@msn.com>"]
-edition = "2018"
+edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 reqwest = { version = "0.11", features = ["stream"] }
-regex = "1.4"
-bytes = "1.0"
+regex = "1.5"
+bytes = "1.1"
 md5 = "0.7"
-zip = "0.5"
+zip = "0.6"
 log = "0.4"
 futures-util = "0.3"
 

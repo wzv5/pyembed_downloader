@@ -20,10 +20,10 @@ static MYLOGGER: ConsoleLogger = ConsoleLogger;
 async fn main() -> Result<()> {
     log::set_logger(&MYLOGGER).unwrap();
     log::set_max_level(log::LevelFilter::Info);
-    let matches = clap::App::new("pyembed_downloader")
+    let matches = clap::Command::new("pyembed_downloader")
         .version(clap::crate_version!())
         .arg(
-            clap::Arg::with_name("pyver")
+            clap::Arg::new("pyver")
                 .long("py-ver")
                 .takes_value(true)
                 .value_name("ver")
@@ -31,52 +31,52 @@ async fn main() -> Result<()> {
                 .help("下载指定版本的 Python，如 3.8.6"),
         )
         .arg(
-            clap::Arg::with_name("32")
+            clap::Arg::new("32")
                 .long("32")
                 .help("下载 32 位版本，默认下载 64 位版本"),
         )
         .arg(
-            clap::Arg::with_name("skip-download")
+            clap::Arg::new("skip-download")
                 .long("skip-download")
                 .help("跳过下载，直接使用已有的文件"),
         )
         .arg(
-            clap::Arg::with_name("dir")
+            clap::Arg::new("dir")
                 .long("dir")
                 .takes_value(true)
                 .help("工作目录，默认为当前目录"),
         )
         .arg(
-            clap::Arg::with_name("python-mirror")
+            clap::Arg::new("python-mirror")
                 .long("python-mirror")
                 .takes_value(true)
                 .value_name("url")
                 .help("通过指定的镜像站下载 Python 安装包"),
         )
         .arg(
-            clap::Arg::with_name("pip-mirror")
+            clap::Arg::new("pip-mirror")
                 .long("pip-mirror")
                 .takes_value(true)
                 .value_name("url")
                 .help("通过指定 pip 镜像站下载依赖包"),
         )
         .arg(
-            clap::Arg::with_name("keep-scripts")
+            clap::Arg::new("keep-scripts")
                 .long("keep-scripts")
                 .help("保留 Scripts 目录"),
         )
         .arg(
-            clap::Arg::with_name("keep-dist-info")
+            clap::Arg::new("keep-dist-info")
                 .long("keep-dist-info")
                 .help("保留 dist-info 目录，删除此目录后将无法再通过 pip 管理依赖"),
         )
         .arg(
-            clap::Arg::with_name("keep-pip")
+            clap::Arg::new("keep-pip")
                 .long("keep-pip")
                 .help("保留 pip、setuptools、wheel 依赖包"),
         )
         .arg(
-            clap::Arg::with_name("optimize")
+            clap::Arg::new("optimize")
                 .long("optimize")
                 .takes_value(true)
                 .value_name("level")
@@ -86,9 +86,9 @@ async fn main() -> Result<()> {
                 ),
         )
         .arg(
-            clap::Arg::with_name("PACKAGES")
+            clap::Arg::new("PACKAGES")
                 .index(1)
-                .multiple(true)
+                .multiple_values(true)
                 .help("要安装的 pip 依赖包"),
         )
         .get_matches();
