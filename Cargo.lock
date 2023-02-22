@@ -817,7 +817,7 @@ dependencies = [
 
 [[package]]
 name = "pyembed_downloader"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "bytes",
  "futures-util",
@@ -831,7 +831,7 @@ dependencies = [
 
 [[package]]
 name = "pyembed_downloader_cli"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "atty",
  "clap",
@@ -843,7 +843,7 @@ dependencies = [
 
 [[package]]
 name = "pyembed_downloader_gui"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "embed-resource",
  "log",
