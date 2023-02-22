@@ -7,9 +7,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-regex = "1.5"
-tokio = { version = "1.17", features = ["rt-multi-thread", "macros"] }
+regex = "1.7"
+tokio = { version = "1.25", features = ["rt-multi-thread", "macros"] }
 log = "0.4"
-clap = { version = "3.1", features = ["cargo"] }
+clap = { version = "3.2", features = ["cargo"] }
 atty = "0.2"
 pyembed_downloader = { path = "../pyembed_downloader" }
