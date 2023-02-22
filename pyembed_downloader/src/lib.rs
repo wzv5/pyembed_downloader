@@ -15,13 +15,17 @@ pub type Result<T> = std::result::Result<T, Box<dyn std::error::Error>>;
 pub async fn run(config: &config::Config, progress_callback: &dyn Fn(i64, i64)) -> Result<()> {
     let _job = utility::setup_job()?;
 
-    let mut workdir = config.dir.clone();
-    if workdir.is_relative() {
-        workdir = std::env::current_dir()?.join(workdir);
+    let mut targetdir = config.dir.clone();
+    if targetdir.is_relative() {
+        targetdir = std::env::current_dir()?.join(targetdir);
     }
-    std::fs::create_dir_all(&workdir)?;
+    let mut cachedir = config.cache_dir.clone();
+    if cachedir.is_relative() {
+        cachedir = std::env::current_dir()?.join(cachedir);
+    }
+    std::fs::create_dir_all(&targetdir)?;
+    std::fs::create_dir_all(&cachedir)?;
 
-    let targetdir = workdir.join("pyembed_runtime");
     let mut pyzippath = std::path::PathBuf::new();
 
     if config.skip_download {
@@ -59,7 +63,7 @@ pub async fn run(config: &config::Config, progress_callback: &dyn Fn(i64, i64)) 
 
         let arch = if config.is32 { "x86" } else { "amd64" };
         let filename = format!("python-{}-embed-{}.zip", v, arch);
-        pyzippath = workdir.join(filename);
+        pyzippath = cachedir.join(filename);
 
         let mut pyzipexists = false;
         if pyzippath.exists() {
@@ -90,8 +94,8 @@ pub async fn run(config: &config::Config, progress_callback: &dyn Fn(i64, i64)) 
         }
     }
 
-    let pippath = workdir.join("get-pip.py");
-    if !config.skip_download || !pippath.exists() {
+    let pippath = cachedir.join("get-pip.py");
+    if !config.skip_download && !pippath.exists() {
         warn!("正在下载 pip ...");
         let pipdata = {
             match download_progress("https://bootstrap.pypa.io/get-pip.py", progress_callback).await

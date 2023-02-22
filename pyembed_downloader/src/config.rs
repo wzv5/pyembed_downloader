@@ -1,9 +1,11 @@
 #[derive(Debug, Clone)]
 pub struct Config {
-    // 工作目录，默认为当前目录
-    // 将把 python-x.x.x-embed-xxx.zip、get-pip.py 下载到此目录
-    // 在此目录下创建 pyembed_runtime 目录作为最终结果
+    // 工作目录，默认为 <当前目录>\pyembed_runtime\
     pub dir: std::path::PathBuf,
+
+    // 缓存目录，默认为当前目录
+    // 将把 python-x.x.x-embed-xxx.zip、get-pip.py 下载到此目录
+    pub cache_dir: std::path::PathBuf,
 
     // 指定要下载的 Python 版本，格式为 3.8.6
     // 如果为空或 "latest"，将下载当前最新版
@@ -40,7 +42,8 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Config {
-            dir: std::env::current_dir().unwrap(),
+            dir: std::env::current_dir().unwrap().join("pyembed_runtime"),
+            cache_dir: std::env::current_dir().unwrap(),
             pyver: "latest".into(),
             is32: false,
             skip_download: false,

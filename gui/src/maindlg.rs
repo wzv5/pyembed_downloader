@@ -26,6 +26,7 @@ impl<'a> dialog::DialogProc for MainProc<'a> {
         );
         // 设置控件初始值
         dlg.set_item_text(resources::IDC_EDT_DIR, self.config.dir.to_str().unwrap());
+        dlg.set_item_text(resources::IDC_EDT_CACHE_DIR, self.config.cache_dir.to_str().unwrap());
         dlg.set_item_text(resources::IDC_EDT_VER, &self.config.pyver);
         dlg.set_enable(resources::IDC_EDT_VER, self.config.pyver != "latest");
         dlg.set_check(resources::IDC_CHK_VER, self.config.pyver != "latest");
@@ -138,6 +139,7 @@ impl<'a> dialog::DialogProc for MainProc<'a> {
                 }
                 // 修改配置
                 self.config.dir = dlg.get_item_text(resources::IDC_EDT_DIR).into();
+                self.config.cache_dir = dlg.get_item_text(resources::IDC_EDT_CACHE_DIR).into();
                 self.config.pyver = ver;
                 self.config.is32 = dlg.get_check(resources::IDC_CHK_32);
                 self.config.skip_download = dlg.get_check(resources::IDC_CHK_SKIP_DOWNLOAD);
@@ -172,6 +174,20 @@ impl<'a> dialog::DialogProc for MainProc<'a> {
                 if let Ok(result) = wfd::open_dialog(params) {
                     dlg.set_item_text(
                         resources::IDC_EDT_DIR,
+                        result.selected_file_path.to_str().unwrap(),
+                    );
+                }
+                true
+            }
+            resources::IDC_BTN_CACHE_DIR => {
+                let params = wfd::DialogParams {
+                    options: wfd::FOS_PICKFOLDERS,
+                    title: "Select a directory",
+                    ..Default::default()
+                };
+                if let Ok(result) = wfd::open_dialog(params) {
+                    dlg.set_item_text(
+                        resources::IDC_EDT_CACHE_DIR,
                         result.selected_file_path.to_str().unwrap(),
                     );
                 }

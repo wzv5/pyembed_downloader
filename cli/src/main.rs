@@ -44,7 +44,13 @@ async fn main() -> Result<()> {
             clap::Arg::new("dir")
                 .long("dir")
                 .takes_value(true)
-                .help("工作目录，默认为当前目录"),
+                .help("工作目录，默认为 <当前目录>\\pyembed_runtime\\"),
+        )
+        .arg(
+            clap::Arg::new("cachedir")
+                .long("cache-dir")
+                .takes_value(true)
+                .help("缓存目录，默认为当前目录"),
         )
         .arg(
             clap::Arg::new("python-mirror")
@@ -94,6 +100,10 @@ async fn main() -> Result<()> {
         .get_matches();
 
     let dir = match matches.value_of_os("dir") {
+        None => std::env::current_dir()?.join("pyembed_runtime"),
+        Some(s) => std::path::PathBuf::from(s),
+    };
+    let cache_dir = match matches.value_of_os("cachedir") {
         None => std::env::current_dir()?,
         Some(s) => std::path::PathBuf::from(s),
     };
@@ -124,6 +134,7 @@ async fn main() -> Result<()> {
 
     let config = Config {
         dir,
+        cache_dir,
         pyver,
         is32,
         skip_download,
