@@ -25,68 +25,71 @@ async fn main() -> Result<()> {
         .arg(
             clap::Arg::new("pyver")
                 .long("py-ver")
-                .takes_value(true)
+                .num_args(1)
                 .value_name("ver")
-                .default_value("latest")
                 .help("下载指定版本的 Python，如 3.8.6"),
         )
         .arg(
             clap::Arg::new("32")
                 .long("32")
+                .num_args(0)
                 .help("下载 32 位版本，默认下载 64 位版本"),
         )
         .arg(
             clap::Arg::new("skip-download")
                 .long("skip-download")
+                .num_args(0)
                 .help("跳过下载，直接使用已有的文件"),
         )
         .arg(
             clap::Arg::new("dir")
                 .long("dir")
-                .takes_value(true)
+                .num_args(1)
                 .help("工作目录，默认为 <当前目录>\\pyembed_runtime\\"),
         )
         .arg(
             clap::Arg::new("cachedir")
                 .long("cache-dir")
-                .takes_value(true)
+                .num_args(1)
                 .help("缓存目录，默认为当前目录"),
         )
         .arg(
             clap::Arg::new("python-mirror")
                 .long("python-mirror")
-                .takes_value(true)
+                .num_args(1)
                 .value_name("url")
                 .help("通过指定的镜像站下载 Python 安装包"),
         )
         .arg(
             clap::Arg::new("pip-mirror")
                 .long("pip-mirror")
-                .takes_value(true)
+                .num_args(1)
                 .value_name("url")
                 .help("通过指定 pip 镜像站下载依赖包"),
         )
         .arg(
             clap::Arg::new("keep-scripts")
                 .long("keep-scripts")
+                .num_args(0)
                 .help("保留 Scripts 目录"),
         )
         .arg(
             clap::Arg::new("keep-dist-info")
                 .long("keep-dist-info")
+                .num_args(0)
                 .help("保留 dist-info 目录，删除此目录后将无法再通过 pip 管理依赖"),
         )
         .arg(
             clap::Arg::new("keep-pip")
                 .long("keep-pip")
+                .num_args(0)
                 .help("保留 pip、setuptools、wheel 依赖包"),
         )
         .arg(
             clap::Arg::new("optimize")
                 .long("optimize")
-                .takes_value(true)
+                .num_args(1)
                 .value_name("level")
-                .default_value("0")
                 .help(
                     "优化编译级别：0（不优化），1（删除断言，关闭调试），2（同时删除文档字符串）",
                 ),
@@ -94,58 +97,53 @@ async fn main() -> Result<()> {
         .arg(
             clap::Arg::new("PACKAGES")
                 .index(1)
-                .multiple_values(true)
+                .num_args(0..)
                 .help("要安装的 pip 依赖包"),
         )
         .get_matches();
-
-    let dir = match matches.value_of_os("dir") {
-        None => std::env::current_dir()?.join("pyembed_runtime"),
-        Some(s) => std::path::PathBuf::from(s),
-    };
-    let cache_dir = match matches.value_of_os("cachedir") {
-        None => std::env::current_dir()?,
-        Some(s) => std::path::PathBuf::from(s),
-    };
-    let pyver = matches.value_of("pyver").unwrap_or_default().to_string();
-    let is32 = matches.is_present("32");
-    let skip_download = matches.is_present("skip-download");
-    let python_mirror = matches
-        .value_of("python-mirror")
-        .unwrap_or_default()
-        .to_string();
-    let pip_mirror = matches
-        .value_of("pip-mirror")
-        .unwrap_or_default()
-        .to_string();
-    let keep_scripts = matches.is_present("keep-scripts");
-    let keep_dist_info = matches.is_present("keep-dist-info");
-    let keep_pip = matches.is_present("keep-pip");
-    let packages: Vec<&str> = matches.values_of("PACKAGES").unwrap_or_default().collect();
-    let optimize = matches
-        .value_of("optimize")
-        .unwrap_or_default()
-        .parse()
-        .unwrap();
-
-    if !pyver.is_empty() && pyver != "latest" && regex_find(r"^\d+\.\d+\.\d+$", &pyver).is_none() {
-        return Err("版本号格式错误".into());
+    let mut config = Config::default();
+    if let Some(mut s) = matches.get_raw("dir") {
+        let mut p = std::path::PathBuf::from(s.next().unwrap());
+        if p.is_relative() {
+            p = std::env::current_dir()?.join(p);
+        }
+        config.dir = p;
     }
-
-    let config = Config {
-        dir,
-        cache_dir,
-        pyver,
-        is32,
-        skip_download,
-        python_mirror,
-        pip_mirror,
-        keep_scripts,
-        keep_dist_info,
-        keep_pip,
-        optimize,
-        packages: packages.iter().map(|s| s.to_string()).collect(),
-    };
+    if let Some(mut s) = matches.get_raw("cachedir") {
+        let mut p = std::path::PathBuf::from(s.next().unwrap());
+        if p.is_relative() {
+            p = std::env::current_dir()?.join(p);
+        }
+        config.cache_dir = p;
+    }
+    if let Some(pyver) = matches.get_one::<String>("pyver") {
+        if !pyver.is_empty()
+            && pyver != "latest"
+            && regex_find(r"^\d+\.\d+\.\d+$", &pyver).is_none()
+        {
+            return Err("版本号格式错误".into());
+        }
+        config.pyver = pyver.to_string();
+    }
+    config.is32 = matches.get_flag("32");
+    config.skip_download = matches.get_flag("skip-download");
+    if let Some(s) = matches.get_one::<String>("python-mirror") {
+        config.python_mirror = s.to_string();
+    }
+    if let Some(s) = matches.get_one::<String>("pip-mirror") {
+        config.pip_mirror = s.to_string();
+    }
+    config.keep_scripts = matches.get_flag("keep-scripts");
+    config.keep_dist_info = matches.get_flag("keep-dist-info");
+    config.keep_pip = matches.get_flag("keep-pip");
+    config.packages = matches
+        .get_many::<String>("PACKAGES")
+        .unwrap_or_default()
+        .map(|s| s.trim().to_string())
+        .collect();
+    if let Some(s) = matches.get_one::<String>("optimize") {
+        config.optimize = s.parse()?;
+    }
 
     let last_len = std::cell::Cell::new(0);
     let simple_progress = |total: i64, read: i64| {

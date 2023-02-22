@@ -10,6 +10,6 @@ edition = "2021"
 regex = "1.7"
 tokio = { version = "1.25", features = ["rt-multi-thread", "macros"] }
 log = "0.4"
-clap = { version = "3.2", features = ["cargo"] }
+clap = { version = "4.1", features = ["cargo"] }
 atty = "0.2"
 pyembed_downloader = { path = "../pyembed_downloader" }
