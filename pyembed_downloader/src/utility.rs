@@ -81,3 +81,21 @@ pub(crate) fn regex_find<'a>(re: &str, text: &'a str) -> Option<regex::Captures<
     }
     None
 }
+
+pub(crate) fn md5(data: &[u8]) -> String {
+    use md5::Digest;
+    let mut buf = [0u8; 32];
+    let hash = md5::Md5::digest(data);
+    base16ct::lower::encode_str(&hash, &mut buf)
+        .unwrap()
+        .to_string()
+}
+
+pub(crate) fn sha256(data: &[u8]) -> String {
+    use sha2::Digest;
+    let mut buf = [0u8; 64];
+    let hash = sha2::Sha256::digest(data);
+    base16ct::lower::encode_str(&hash, &mut buf)
+        .unwrap()
+        .to_string()
+}

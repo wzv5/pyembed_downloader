@@ -11,7 +11,7 @@ static mut LOGGER: EditBoxLogger = EditBoxLogger {
 
 pub fn init(level: log::Level) -> Result<(), log::SetLoggerError> {
     unsafe {
-        log::set_logger(&LOGGER)?;
+        log::set_logger(&*(&raw const LOGGER))?;
     }
     log::set_max_level(level.to_level_filter());
     Ok(())

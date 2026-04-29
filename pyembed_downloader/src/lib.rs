@@ -66,7 +66,11 @@ pub async fn run(config: &config::Config, progress_callback: &dyn Fn(i64, i64)) 
         let mut pyzipexists = false;
         if pyzippath.exists() {
             if let Ok(pyembeddata) = std::fs::read(&pyzippath) {
-                let hash = format!("{:x}", md5::compute(&pyembeddata));
+                let hash = if info.1.len() == 32 {
+                    utility::md5(&pyembeddata)
+                } else {
+                    utility::sha256(&pyembeddata)
+                };
                 if hash.eq_ignore_ascii_case(&info.1) {
                     info!("文件已存在，跳过下载");
                     pyzipexists = true;
@@ -79,7 +83,11 @@ pub async fn run(config: &config::Config, progress_callback: &dyn Fn(i64, i64)) 
             let pyembeddata = download_progress(&info.0, progress_callback).await?;
             progress_callback(-1, -1);
             warn!("校验文件完整性 ...");
-            let hash = format!("{:x}", md5::compute(&pyembeddata));
+            let hash = if info.1.len() == 32 {
+                utility::md5(&pyembeddata)
+            } else {
+                utility::sha256(&pyembeddata)
+            };
             if !hash.eq_ignore_ascii_case(&info.1) {
                 info!("文件哈希不匹配");
                 info!("预期：{}", info.1);
@@ -287,7 +295,7 @@ fn setup_pip(dir: &std::path::Path, pip: &std::path::Path, mirror: Option<&str>)
     t1.join().unwrap();
     t2.join().unwrap();
     if !status.success() {
-        return Err(format!("安装 pip 失败 [{}]", status).into());
+        return Err(format!("安装 pip 失败 [{}]，可尝试手动下载旧版本 get-pip.py 到缓存目录", status).into());
     }
     Ok(())
 }
@@ -497,14 +505,24 @@ async fn get_python_download_info(
     ))
     .await?;
     let re = if is32 {
-        r#""([^"]*?)">(?:Windows x86 embeddable zip file|Windows embeddable package \(32-bit\)).*?([a-fA-F0-9]{32})"#
+        r#""([^"]*?)">(?:Windows x86 embeddable zip file|Windows embeddable package \(32-bit\)).*?checksum">(.+?)</code>"#
     } else {
-        r#""([^"]*?)">(?:Windows x86-64 embeddable zip file|Windows embeddable package \(64-bit\)).*?([a-fA-F0-9]{32})"#
+        r#""([^"]*?)">(?:Windows x86-64 embeddable zip file|Windows embeddable package \(64-bit\)).*?checksum">(.+?)</code>"#
     };
+    let re_hash = r"[a-fA-F0-9]{16}";
     if let Some(caps) = utility::regex_find(re, &body) {
         if caps.len() == 3 {
             let mut url = caps.get(1).unwrap().as_str().to_string();
-            let hash = caps.get(2).unwrap().as_str().to_string();
+            let hash_html = caps.get(2).unwrap().as_str().to_string();
+            let hash = regex::Regex::new(re_hash)
+                .unwrap()
+                .find_iter(&hash_html)
+                .map(|i| i.as_str())
+                .collect::<Vec<_>>()
+                .join("");
+            if hash.len() != 32 && hash.len() != 64 {
+                return Err(format!("哈希长度不匹配：{hash}").into());
+            }
             if let Some(mirror) = mirror {
                 // 只有官网下载链接是这个格式时才使用镜像站
                 url = url.replace(
